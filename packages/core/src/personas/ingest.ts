@@ -12,6 +12,8 @@
 // meta upsert) is transactional, so a failed pull never corrupts an existing
 // pool for that country.
 
+import { mkdir } from "node:fs/promises";
+import { dirname } from "node:path";
 import { DuckDBConnection, DuckDBInstance } from "@duckdb/node-api";
 import type { Country } from "../types";
 import { ensurePoolSchema } from "./pool-schema";
@@ -44,6 +46,9 @@ export async function pullCountryPool(opts: {
   }
   const emit = opts.onProgress ?? (() => {});
 
+  // First pull on a fresh machine: the data directory doesn't exist yet and
+  // DuckDB won't create parents.
+  await mkdir(dirname(opts.poolPath), { recursive: true });
   const instance = await DuckDBInstance.create(opts.poolPath);
   const connection = await DuckDBConnection.create(instance);
   try {

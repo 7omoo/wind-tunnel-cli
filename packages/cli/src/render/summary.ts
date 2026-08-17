@@ -1,5 +1,7 @@
 // Final terminal summary of a run — the part a user screenshots. Reads the
 // artifacts, not intermediate state, so `run` and `resume` render identically.
+// All layout is display-width aware (CJK counts as 2 columns) and long prose
+// wraps with hanging indents instead of overflowing 80-column terminals.
 
 import {
   type AlternativeSuggestions,
@@ -12,7 +14,9 @@ import {
   type RunInput,
   sentimentCounts,
 } from "@wind-tunnel/core";
-import { clip, formatDuration, paint, useColor } from "./format";
+import { clip, formatDuration, paint, useColor, wrap } from "./format";
+
+const WIDTH = 76;
 
 const RISK_STYLE: Record<RiskLevel, Parameters<typeof paint>[0]> = {
   Low: "green",
@@ -39,11 +43,11 @@ export function renderSummary(
   const color = useColor(stream);
   const c = (style: Parameters<typeof paint>[0], text: string) => paint(style, text, color);
   const lines: string[] = [];
-  const rule = c("dim", "─".repeat(60));
+  const rule = c("dim", "─".repeat(WIDTH));
 
   lines.push("");
   lines.push(rule);
-  lines.push(c("bold", clip(data.input.topic, 58)));
+  lines.push(c("bold", clip(data.input.topic, WIDTH)));
   lines.push(
     c(
       "dim",
@@ -58,7 +62,7 @@ export function renderSummary(
     lines.push(
       `${c("bold", "Backlash index")}  ${c(RISK_STYLE[risk], `${data.verdict.inflammationIndex} / 100  ${risk.toUpperCase()}`)}`,
     );
-    if (data.verdict.summary) lines.push(clip(data.verdict.summary, 240));
+    if (data.verdict.summary) lines.push(...wrap(data.verdict.summary, WIDTH));
   }
 
   if (data.scores.length > 0) {
@@ -75,7 +79,11 @@ export function renderSummary(
     lines.push(c("bold", "Triggers"));
     data.verdict.triggers.forEach((t, i) => {
       lines.push(
-        `  ${i + 1}. "${clip(t.expression, 60)}" (${t.severity}) → ${clip(t.offendedSegment, 60)}`,
+        ...wrap(
+          `${i + 1}. "${t.expression}" (${t.severity}) → ${t.offendedSegment}`,
+          WIDTH - 2,
+          "   ",
+        ).map((l, j) => (j === 0 ? `  ${l}` : `  ${l}`)),
       );
     });
   }
@@ -86,18 +94,16 @@ export function renderSummary(
     for (const g of data.cluster.groupProfiles) {
       const size = data.cluster.clusters.find((cl) => cl.id === g.clusterId)?.size ?? 0;
       const name = g.name || `group ${g.clusterId + 1}`;
-      lines.push(`  • ${name} (${size})${g.coreBelief ? ` — ${clip(g.coreBelief, 70)}` : ""}`);
+      const body = `• ${name} (${size})${g.coreBelief ? ` — ${g.coreBelief}` : ""}`;
+      // Continuation aligns under the text after the bullet.
+      lines.push(...wrap(body, WIDTH - 2, "  ").map((l) => `  ${l}`));
     }
     if (data.cluster.axes?.length) {
-      lines.push(
-        c(
-          "dim",
-          `  axes: ${data.cluster.axes
-            .slice(0, 2)
-            .map((a) => `${a.label} (${a.variancePct}%)`)
-            .join(" · ")}`,
-        ),
-      );
+      const axesText = `axes: ${data.cluster.axes
+        .slice(0, 2)
+        .map((a) => `${a.label} (${a.variancePct}%)`)
+        .join(" · ")}`;
+      lines.push(...wrap(axesText, WIDTH - 2, "  ").map((l) => c("dim", `  ${l}`)));
     }
   }
 
@@ -105,17 +111,32 @@ export function renderSummary(
     lines.push("");
     lines.push(c("bold", "Alternatives"));
     data.suggest.alternatives.forEach((a, i) => {
-      lines.push(`  ${i + 1}. ${clip(a.text, 90)}`);
-      lines.push(c("dim", `     ${a.strategy} · risk reduction ${a.estimatedRiskReduction}`));
+      // Continuation aligns under the text after the "N. " marker.
+      lines.push(...wrap(`${i + 1}. ${a.text}`, WIDTH - 2, "   ").map((l) => `  ${l}`));
+      lines.push(
+        ...wrap(
+          `${a.strategy} · risk reduction ${a.estimatedRiskReduction}`,
+          WIDTH - 5,
+          "     ",
+        ).map((l) => c("dim", `     ${l}`)),
+      );
     });
     if (data.suggest.commonGround) {
-      lines.push(c("dim", `  common ground: ${clip(data.suggest.commonGround, 90)}`));
+      lines.push(
+        ...wrap(`common ground: ${data.suggest.commonGround}`, WIDTH - 2, "  ").map((l) =>
+          c("dim", `  ${l}`),
+        ),
+      );
     }
   }
 
   if (data.warnings.length > 0) {
     lines.push("");
-    for (const w of data.warnings) lines.push(`${c("yellow", "⚠")} ${w}`);
+    for (const w of data.warnings) {
+      lines.push(
+        ...wrap(w, WIDTH - 2, "  ").map((l, j) => (j === 0 ? `${c("yellow", "⚠")} ${l}` : l)),
+      );
+    }
   }
 
   lines.push("");
