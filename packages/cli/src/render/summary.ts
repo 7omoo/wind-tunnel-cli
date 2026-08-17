@@ -16,8 +16,6 @@ import {
 } from "@wind-tunnel/core";
 import { clip, formatDuration, gauge, paint, segmentedBar, useColor, wrap } from "./format";
 
-const WIDTH = 76;
-
 const RISK_STYLE: Record<RiskLevel, Parameters<typeof paint>[0]> = {
   Low: "green",
   Medium: "yellow",
@@ -43,6 +41,9 @@ export function renderSummary(
   data: SummaryData,
   stream: NodeJS.WriteStream = process.stdout,
 ): string {
+  // Follow the terminal, but cap the measure: beyond ~100 columns (≈50 CJK
+  // characters) prose lines get hard to scan.
+  const WIDTH = Math.max(56, Math.min((stream.columns ?? 78) - 2, 100));
   const color = useColor(stream);
   const c = (style: Parameters<typeof paint>[0], text: string) => paint(style, text, color);
   const lines: string[] = [];
