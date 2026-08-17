@@ -19,7 +19,9 @@
   },
   "dependencies": {
     "@wind-tunnel/core": "workspace:*",
-    "commander": "^15.0.0"
+    "commander": "^15.0.0",
+    "smol-toml": "^1.8.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "tsup": "^8.5.1",

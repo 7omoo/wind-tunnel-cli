@@ -110,6 +110,9 @@ export async function clusterOpinions(
     }
   }
 
+  // Empty clusters happen when k-means places two centroids on identical votes
+  // (uniform corpora); they carry no members and would otherwise surface as
+  // "group N (0)" with a fabricated profile — drop them.
   const clusters = Array.from({ length: bestK }, (_, k) => {
     const memberIndices = bestLabels.map((l, i) => (l === k ? i : -1)).filter((i) => i >= 0);
     const memberIds = memberIndices
@@ -120,7 +123,7 @@ export async function clusterOpinions(
       return memberIndices.length > 0 ? sum / memberIndices.length : 0;
     });
     return { id: k, size: memberIds.length, centroid, memberIds };
-  });
+  }).filter((c) => c.size > 0);
 
   // Phases 6-8: consensus / division / bridging (pure math).
   const consensus = detectConsensus(voteMatrix, bestLabels, propositions);
@@ -140,10 +143,12 @@ export async function clusterOpinions(
   ]);
   warnings.push(...profilesAndMinority.warnings);
 
-  const axes = axisLabels.map((label, i) => ({
-    label,
-    variancePct: Math.round((explainedVariance[i] ?? 0) * 1000) / 10,
-  }));
+  // A degenerate PCA (zero-variance vote matrix) yields NaN variance ratios,
+  // which would serialize to null in the artifact — clamp to 0.
+  const axes = axisLabels.map((label, i) => {
+    const ratio = explainedVariance[i] ?? 0;
+    return { label, variancePct: Number.isFinite(ratio) ? Math.round(ratio * 1000) / 10 : 0 };
+  });
 
   const result: OpinionClusterResult = {
     propositions,
