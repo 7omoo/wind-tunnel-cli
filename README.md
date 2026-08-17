@@ -41,6 +41,30 @@ Triggers
 - **`wt-cli detail`** — every voice in full and the proposition × group table
 - **Plain artifacts** per run (JSONL / JSON / CSV) for pandas, R, or Excel
 
+## How it works
+
+1. **Sample** — N personas are drawn from the demographic pool
+   (country / region / age / sex filters).
+2. **React** — each persona answers in character (fast bulk model, parallel
+   batches), framed by the situation: an anonymous board runs hotter than
+   real-name social media.
+3. **Score** — every reaction is classified as stance × unsigned intensity and
+   the signed score is composed in code, so a small model can never mis-sign
+   a criticism as praise.
+4. **Cluster** — [Pol.is](https://pol.is)-style opinion-space analysis with
+   LLM-inferred votes: propositions are extracted from the corpus, every
+   reaction votes agree/disagree on each, and the vote matrix goes through
+   PCA + k-means. Consensus, divisive and minority views fall out of the
+   group × proposition agreement rates — and a silhouette check collapses to
+   one camp rather than inventing structure in a unanimous crowd.
+5. **Verdict & rewrites** — the analysis model reads the aggregate stats plus
+   a stratified sample weighted toward both extremes for the backlash index
+   and triggers; rewrites target those triggers specifically.
+
+Every JSON hop is constrained-decoded (schemas shipped as Ollama's `format`),
+so an 8B model cannot break the pipeline with malformed output. The full
+reasoning lives in [docs/DESIGN.md](docs/DESIGN.md).
+
 ## Setup
 
 Requires Node >= 20 and [Ollama](https://ollama.com/download):
