@@ -1,5 +1,9 @@
 # Wind Tunnel
 
+[![CI](https://github.com/7omoo/wind-tunnel-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/7omoo/wind-tunnel-cli/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/wind-tunnel)](https://www.npmjs.com/package/wind-tunnel)
+[![license](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+
 Generate and cluster synthetic opinions from hundreds of local AI personas — a CLI for testing messages before you publish.
 
 Give it a draft (an ad, a post, an announcement). Wind Tunnel shows it to a
