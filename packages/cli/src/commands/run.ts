@@ -56,7 +56,7 @@ export async function preflightModels(
     const report = await diagnoseOllama({ baseUrl: cfg.ollamaHost, roles: models });
     if (!report.reachable) {
       problems.push(
-        `Ollama daemon not reachable at ${report.baseUrl} — start it with: brew services start ollama (or: ollama serve)`,
+        `Ollama daemon not reachable at ${report.baseUrl} — start it (brew services start ollama / ollama serve); not installed? https://ollama.com/download`,
       );
     } else {
       for (const check of report.roleChecks) {

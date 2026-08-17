@@ -11,7 +11,9 @@ export function useColor(stream: NodeJS.WriteStream = process.stdout): boolean {
 }
 
 export function paint(style: Style, text: string, enabled: boolean): string {
-  return enabled ? styleText(style, text) : text;
+  // validateStream:false — useColor() already decided; without it styleText
+  // re-checks stdout's TTY and silently drops colors under pipes and tests.
+  return enabled ? styleText(style, text, { validateStream: false }) : text;
 }
 
 export function formatDuration(ms: number): string {

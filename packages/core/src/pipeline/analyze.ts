@@ -44,17 +44,19 @@ export async function scoreOpinions(opts: ScoreOptions): Promise<ScoreResult> {
     batches.push(opts.opinions.slice(i, i + batchSize));
   }
 
-  // Calibration note ("boredom is not backlash"): without the explicit band
-  // guidance, harmless-but-bland posts score deeply negative — dismissiveness
-  // gets conflated with hostility and the verdict saturates (observed: a plain
-  // weather question scoring 95/100 HIGH).
-  const system = `You are a sentiment scorer for public reactions to a post/ad. Score EVERY reaction from -100 to +100 with a one-sentence reason in ${lang}.
-Calibration:
-- -100..-60: genuine offense, anger, or moral objection to the post
-- -59..-20: clear criticism of the post's substance
-- -19..+19: neutral, indifferent, bored, or "this is pointless" — dismissiveness is NOT hostility
-- +20..+59: clear approval
-- +60..+100: enthusiastic support`;
+  // The model never writes a signed number. Small local models mis-sign
+  // negative ranges (observed: reasons saying "clear criticism" scored +25),
+  // so the schema takes a stance enum plus an unsigned intensity and the sign
+  // is composed in code — a sign error is structurally impossible.
+  //
+  // Calibration ("boredom is not backlash"): dismissive/bored/pointless
+  // reactions are neutral, not critical; without that, harmless-but-bland
+  // posts saturate the verdict (observed: a weather question at 95/100 HIGH).
+  const system = `You are a sentiment scorer for public reactions to a post/ad. For EVERY reaction, classify its stance toward the post and rate the intensity, with a one-sentence reason in ${lang}.
+- stance "critical": the reaction criticizes, objects to, or is offended by the post
+- stance "neutral": indifferent, bored, ambivalent, or "this is pointless" — dismissiveness is NOT criticism
+- stance "favorable": the reaction approves of or supports the post
+- intensity 20-100: how strongly the stance is expressed (mild 20-50, strong 60-100; ignored for neutral)`;
 
   const settled = await mapWaves(
     batches,
@@ -68,7 +70,8 @@ Calibration:
           .array(
             z.object({
               personaId: z.enum(ids as [string, ...string[]]),
-              score: z.number().min(-100).max(100),
+              stance: z.enum(["critical", "neutral", "favorable"]),
+              intensity: z.number().min(0).max(100),
               reason: z.string(),
             }),
           )
@@ -82,7 +85,16 @@ Calibration:
         system,
         prompt: `Post content: ${topic}\n\nReactions:\n${reactionsBlock}\n\nScore every reaction.`,
       });
-      return output.scores;
+      // Compose the signed score. Non-neutral intensities clamp to [20, 100] so
+      // the stance always lands in its sentiment band (threshold ±20).
+      return output.scores.map((s) => ({
+        personaId: s.personaId,
+        score:
+          s.stance === "neutral"
+            ? 0
+            : (s.stance === "critical" ? -1 : 1) * Math.min(100, Math.max(20, s.intensity)),
+        reason: s.reason,
+      }));
     },
     opts.onProgress,
   );

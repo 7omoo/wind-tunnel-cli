@@ -22,9 +22,11 @@ describe("scoreOpinions", () => {
     const opinions = Array.from({ length: 30 }, (_, i) => opinion(`p${i}`, `意見 ${i}`));
     const model = textModel((prompt) => {
       const ids = idsInPrompt(prompt);
+      const stances = ["critical", "neutral", "favorable"] as const;
       const scores = ids.map((personaId, i) => ({
         personaId,
-        score: ((i * 37) % 201) - 100,
+        stance: stances[i % 3],
+        intensity: 20 + ((i * 13) % 80),
         reason: "理由",
       }));
       return JSON.stringify({ scores });
@@ -52,7 +54,12 @@ describe("scoreOpinions", () => {
       const ids = idsInPrompt(prompt);
       if (ids.includes("p0")) throw new Error("batch exploded");
       return JSON.stringify({
-        scores: ids.map((personaId) => ({ personaId, score: 40, reason: "" })),
+        scores: ids.map((personaId) => ({
+          personaId,
+          stance: "favorable",
+          intensity: 40,
+          reason: "",
+        })),
       });
     });
     const { scores, warnings } = await scoreOpinions({
@@ -77,6 +84,32 @@ describe("scoreOpinions", () => {
     await expect(
       scoreOpinions({ topic: "t", opinions, outputLang: "ja", model, concurrency: 2 }),
     ).rejects.toThrow(/all .* score batches failed/);
+  });
+});
+
+describe("scoreOpinions — sign composition", () => {
+  it("composes the sign in code so a model sign error is impossible", async () => {
+    const opinions = [opinion("a", "批判"), opinion("b", "退屈"), opinion("c", "称賛")];
+    const model = textModel([
+      JSON.stringify({
+        scores: [
+          { personaId: "a", stance: "critical", intensity: 70, reason: "" },
+          { personaId: "b", stance: "neutral", intensity: 90, reason: "" },
+          { personaId: "c", stance: "favorable", intensity: 5, reason: "" },
+        ],
+      }),
+    ]);
+    const { scores } = await scoreOpinions({
+      topic: "t",
+      opinions,
+      outputLang: "ja",
+      model,
+      concurrency: 1,
+    });
+    const byId = new Map(scores.map((s) => [s.personaId, s.score]));
+    expect(byId.get("a")).toBe(-70); // critical -> negative, always
+    expect(byId.get("b")).toBe(0); // neutral -> 0 regardless of intensity
+    expect(byId.get("c")).toBe(20); // favorable clamps into its band (>= +20)
   });
 });
 

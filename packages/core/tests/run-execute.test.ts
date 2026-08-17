@@ -52,7 +52,8 @@ function pipelineModels(opts: { failCluster?: boolean } = {}): PipelineModels & 
       return JSON.stringify({
         scores: ids.map((personaId, i) => ({
           personaId,
-          score: i % 2 === 0 ? -60 : 55,
+          stance: i % 2 === 0 ? "critical" : "favorable",
+          intensity: i % 2 === 0 ? 60 : 55,
           reason: "理由",
         })),
       });
