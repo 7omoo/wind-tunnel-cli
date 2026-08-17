@@ -1,7 +1,7 @@
 # Wind Tunnel
 
 [![CI](https://github.com/7omoo/wind-tunnel-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/7omoo/wind-tunnel-cli/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/wind-tunnel)](https://www.npmjs.com/package/wind-tunnel)
+[![npm](https://img.shields.io/npm/v/wind-tunnel-cli)](https://www.npmjs.com/package/wind-tunnel-cli)
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
 Generate and cluster synthetic opinions from hundreds of local AI personas — a CLI for testing messages before you publish.
@@ -81,12 +81,12 @@ ollama pull qwen3:8b && ollama pull qwen3:14b       # role models (one-time, ~15
 ## Quickstart
 
 ```
-npx wind-tunnel doctor              # verifies the setup, tells you exactly what's missing
-npx wind-tunnel personas pull usa   # streams a persona pool from Hugging Face (~30 s)
-npx wind-tunnel run "draft copy..."
+npx wind-tunnel-cli doctor              # verifies the setup, tells you exactly what's missing
+npx wind-tunnel-cli personas pull usa   # streams a persona pool from Hugging Face (~30 s)
+npx wind-tunnel-cli run "draft copy..."
 ```
 
-Installed globally (`npm i -g wind-tunnel`) the command is `wt-cli`. Runs are
+Installed globally (`npm i -g wind-tunnel-cli`) the command is `wt-cli`. Runs are
 resumable (`wt-cli resume <run-id>`) and every option — countries, audience
 filters, situations, model overrides — is in the
 [command reference](docs/commands.md).

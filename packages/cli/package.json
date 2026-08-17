@@ -1,5 +1,5 @@
 {
-  "name": "wind-tunnel",
+  "name": "wind-tunnel-cli",
   "version": "0.1.0",
   "description": "Generate and cluster synthetic opinions from hundreds of local AI personas — a CLI for testing messages before you publish",
   "type": "module",

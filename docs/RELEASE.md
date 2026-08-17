@@ -29,7 +29,7 @@ Plain SemVer with major version zero. `0.x` **is** the alpha signal — the
 SemVer spec reserves it for initial development ("anything MAY change"), and
 the npm ecosystem reads it that way. No `-alpha.N` suffixes and no `alpha`
 dist-tag: that machinery exists for shipping previews *alongside* a stable
-line, and with no stable line yet it would only break `npx wind-tunnel`
+line, and with no stable line yet it would only break `npx wind-tunnel-cli`
 (which installs `latest`).
 
 While on 0.x:
@@ -61,7 +61,7 @@ pnpm install && pnpm check && pnpm typecheck && pnpm test && pnpm build
 # dry run: verify the tarball contains dist/ + manifest only
 cd packages/cli && npm publish --dry-run
 
-npm publish            # first publish claims the name `wind-tunnel`
+npm publish            # first publish claims the name `wind-tunnel-cli`
 git tag -a v0.1.0 -m "v0.1.0" && git push --follow-tags
 gh release create v0.1.0 --generate-notes
 ```
@@ -71,9 +71,11 @@ bump + tag — see the versioning policy above.)
 
 Notes:
 
-- The published package is `wind-tunnel` (bin: `wt-cli`). The name was
-  confirmed unclaimed on npm on 2026-08-17 — claim it with the first publish;
-  don't sit on it.
+- The published package is `wind-tunnel-cli` (bin: `wt-cli`), matching the
+  repo. The first choice `wind-tunnel` was rejected by the registry at publish
+  time (E403, moniker rule: too similar to the existing `windtunnel`) even
+  though `npm view` showed it unclaimed — renamed 2026-08-17. `npx <package>`
+  still runs `wt-cli`: with a single bin, npx executes it regardless of name.
 - `@wind-tunnel/core` stays private and unbublished: the CLI bundle compiles it
   in (tsup `noExternal`), so it is a devDependency and never reaches the
   registry. Runtime deps of the published package are exactly:
@@ -97,6 +99,6 @@ releases benefit from a human at the wheel.)
 
 - GitHub repo public + topics: `llm` `ollama` `persona` `simulation`
   `synthetic-audience` `marketing`
-- Verify `npx wind-tunnel doctor` works on a machine that has never seen the
+- Verify `npx wind-tunnel-cli doctor` works on a machine that has never seen the
   repo
 - README quickstart against the published package instead of the checkout

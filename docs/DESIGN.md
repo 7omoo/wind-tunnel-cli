@@ -29,10 +29,10 @@ Secondary: a hybrid profile that keeps the ~4 heavy analysis calls on a cloud mo
 | --- | --- |
 | Language | TypeScript (ESM, strict, `noUncheckedIndexedAccess`) |
 | Package manager | pnpm workspace |
-| Packages | `packages/core` (engine, private) + `packages/cli` (npm: `wind-tunnel`) |
-| Binary name | `wt-cli` (user decision 2026-08-17). `wt` is off-limits (Windows Terminal's `wt.exe`). Accepted risk: Auth0's discontinued webtask CLI (npm package `wt-cli`, last publish 2023) also ships a `wt-cli` bin, so global installs collide on the few machines that still have it. The npm package name stays `wind-tunnel` (`wt-cli` is taken on the registry) |
-| Publishing | Single npm package `wind-tunnel`; core is bundled in via tsup (`noExternal`) |
-| Distribution | npm first (`npx wind-tunnel`); Docker image second (Linux servers / CI); single binary later if native deps stay isolated to the ingest module |
+| Packages | `packages/core` (engine, private) + `packages/cli` (npm: `wind-tunnel-cli`) |
+| Binary name | `wt-cli` (user decision 2026-08-17). `wt` is off-limits (Windows Terminal's `wt.exe`). Accepted risk: Auth0's discontinued webtask CLI (npm package `wt-cli`, last publish 2023) also ships a `wt-cli` bin, so global installs collide on the few machines that still have it. The npm package is `wind-tunnel-cli`, matching the repo (`wt-cli` is taken on the registry; unscoped `wind-tunnel` was rejected at first publish, 2026-08-17 — npm's moniker rule flagged it as too similar to the existing `windtunnel`) |
+| Publishing | Single npm package `wind-tunnel-cli`; core is bundled in via tsup (`noExternal`) |
+| Distribution | npm first (`npx wind-tunnel-cli`); Docker image second (Linux servers / CI); single binary later if native deps stay isolated to the ingest module |
 | Lint/format | Biome, line width 100, double quotes |
 | Tests | Vitest, four layers (unit / mocked pipeline / black-box E2E over an Ollama stub / self-skipping live integration) — see docs/testing.md |
 | No web framework | No Next.js, no HTTP server, no SSE — the pipeline is plain async functions and generators |
