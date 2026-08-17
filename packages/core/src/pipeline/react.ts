@@ -9,6 +9,7 @@
 // would make every downstream stage fabricate a verdict from nothing).
 
 import { generateText, type LanguageModel } from "ai";
+import { stageTimeoutSignal } from "../models/stages";
 import { extractName } from "../personas/names";
 import {
   buildContextBlock,
@@ -70,7 +71,12 @@ export async function* reactPersonas(opts: ReactOptions): AsyncGenerator<Opinion
           ) +
           extra +
           framing;
-        const { text } = await generateText({ model: opts.model, system, prompt });
+        const { text } = await generateText({
+          model: opts.model,
+          system,
+          prompt,
+          abortSignal: stageTimeoutSignal("react"),
+        });
         return {
           personaId: p.uuid,
           name,
@@ -98,7 +104,10 @@ export async function* reactPersonas(opts: ReactOptions): AsyncGenerator<Opinion
 
   if (succeeded === 0 && targets.length > 0) {
     const detail = lastError instanceof Error ? `: ${lastError.message}` : "";
-    throw new Error(`all ${targets.length} persona reactions failed${detail}`);
+    // cause preserved so the CLI error classifier can see the network layer.
+    throw new Error(`all ${targets.length} persona reactions failed${detail}`, {
+      cause: lastError,
+    });
   }
   return { requested: targets.length, succeeded, failed };
 }

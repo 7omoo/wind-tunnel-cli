@@ -29,3 +29,24 @@ export const STAGE_NUM_CTX: Record<PipelineStage, number> = {
 // Keep models resident between stages so a run never pays reload latency
 // mid-pipeline. Ollama's default (5m) can evict between slow stages.
 export const DEFAULT_KEEP_ALIVE = "15m";
+
+// Per-CALL timeouts. Without these a stuck daemon (e.g. wedged model load)
+// hangs generateText forever behind a live spinner — the worst failure mode,
+// because it looks like progress. A timeout converts the hang into a normal
+// failure that the stage semantics already handle (counted, degraded, or
+// fatal-but-resumable). Values budget for a cold model load on the first call
+// of a stage plus generous generation time.
+export const STAGE_TIMEOUT_MS: Record<PipelineStage, number> = {
+  react: 180_000,
+  score: 300_000,
+  stance: 180_000,
+  axis_labels: 120_000,
+  verdict: 600_000,
+  propositions: 600_000,
+  profiles: 600_000,
+  suggest: 600_000,
+};
+
+export function stageTimeoutSignal(stage: PipelineStage): AbortSignal {
+  return AbortSignal.timeout(STAGE_TIMEOUT_MS[stage]);
+}

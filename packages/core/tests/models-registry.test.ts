@@ -41,6 +41,13 @@ describe("resolveModel", () => {
 });
 
 describe("stage context budgets", () => {
+  it("every stage has both a context budget and a call timeout", async () => {
+    const { STAGE_TIMEOUT_MS } = await import("../src/models/stages");
+    for (const stage of Object.keys(STAGE_NUM_CTX) as (keyof typeof STAGE_NUM_CTX)[]) {
+      expect(STAGE_TIMEOUT_MS[stage]).toBeGreaterThanOrEqual(60_000);
+    }
+  });
+
   it("every stage has a positive budget and react stays small (parallelism)", () => {
     for (const ctx of Object.values(STAGE_NUM_CTX)) {
       expect(ctx).toBeGreaterThan(0);

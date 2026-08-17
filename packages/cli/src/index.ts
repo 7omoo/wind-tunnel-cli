@@ -5,6 +5,28 @@ import { initCommand } from "./commands/init";
 import { personasListCommand, personasPullCommand } from "./commands/personas";
 import { resumeCommand } from "./commands/resume";
 import { runCommand } from "./commands/run";
+import { renderError } from "./errors";
+
+// Pipe etiquette: `wt-cli detail | head` closes stdout early — exit quietly
+// instead of dumping an EPIPE stack (and never let a broken pipe kill a run
+// mid-write path with a cryptic error).
+for (const stream of [process.stdout, process.stderr]) {
+  stream.on("error", (e: NodeJS.ErrnoException) => {
+    if (e.code === "EPIPE") process.exit(0);
+    throw e;
+  });
+}
+
+// Anything that escapes the per-command handlers still dies with a readable
+// line (and a full stack under WT_DEBUG) instead of Node's default dump.
+process.on("uncaughtException", (e) => {
+  renderError(e);
+  process.exit(1);
+});
+process.on("unhandledRejection", (e) => {
+  renderError(e);
+  process.exit(1);
+});
 
 const int = (value: string): number => Number.parseInt(value, 10);
 

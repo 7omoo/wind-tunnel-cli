@@ -5,6 +5,7 @@
 
 import { generateText, type LanguageModel, Output } from "ai";
 import { z } from "zod";
+import { stageTimeoutSignal } from "../models/stages";
 import { outputLangName } from "../schemas";
 import type {
   AlternativeSuggestions,
@@ -134,6 +135,7 @@ Based on the opinion-cluster analysis data below (consensus, divisive points, br
   const { output } = await generateText({
     model: opts.model,
     temperature: 0.1,
+    abortSignal: stageTimeoutSignal("suggest"),
     output: Output.object({ schema: suggestGenSchema }),
     system,
     prompt: `${ja ? "テーマ" : "Topic"}: ${topic}

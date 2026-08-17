@@ -5,6 +5,7 @@
 
 import { RunStore } from "@wind-tunnel/core";
 import { type CliFlags, loadConfig } from "../config";
+import { renderError } from "../errors";
 import { paint, useColor } from "../render/format";
 import { resolveRunDir } from "../runs";
 import { executeAndRender, preflightModels } from "./run";
@@ -30,7 +31,7 @@ export async function resumeCommand(idOrPath: string, flags: CliFlags): Promise<
     if (!(await preflightModels(input.models, cfg, stderr))) return 1;
     return await executeAndRender(store, cfg, stderr);
   } catch (e) {
-    stderr.write(`${paint("red", "✗", color)} ${e instanceof Error ? e.message : String(e)}\n`);
+    renderError(e, stderr);
     return 1;
   }
 }

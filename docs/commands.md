@@ -113,7 +113,8 @@ host = "http://localhost:11434"
 
 Environment variables: `WT_PROFILE`, `WT_MODEL_BULK`, `WT_MODEL_ANALYSIS`,
 `WT_MODEL_PREMIUM`, `WT_COUNTRY`, `WT_PERSONAS`, `WT_BATCH`, `WT_OUTPUT_LANG`,
-`WT_SITUATION`, `WT_OLLAMA_HOST` (or `OLLAMA_HOST`), `GEMINI_API_KEY`.
+`WT_SITUATION`, `WT_OLLAMA_HOST` (or `OLLAMA_HOST`), `GEMINI_API_KEY`,
+`WT_DEBUG` (set to 1 for full stack traces and version info on errors).
 
 ## Run artifacts
 

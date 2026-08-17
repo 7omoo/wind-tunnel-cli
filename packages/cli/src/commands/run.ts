@@ -23,6 +23,7 @@ import {
   topicSchema,
 } from "@wind-tunnel/core";
 import { type CliFlags, loadConfig, type ResolvedConfig } from "../config";
+import { renderError } from "../errors";
 import { paint, useColor } from "../render/format";
 import { createProgressRenderer } from "../render/progress";
 import { renderSummary } from "../render/summary";
@@ -139,7 +140,7 @@ export async function runCommand(message: string, flags: RunFlags): Promise<numb
 
     return await executeAndRender(store, cfg, stderr, source);
   } catch (e) {
-    stderr.write(`${paint("red", "✗", color)} ${e instanceof Error ? e.message : String(e)}\n`);
+    renderError(e, stderr);
     return 1;
   } finally {
     pool?.close();
@@ -162,8 +163,29 @@ export async function executeAndRender(
 
   const renderer = createProgressRenderer(stderr);
   const started = Date.now();
+
+  // Ctrl-C on a long run is a normal move, not a crash: fold the live block,
+  // say what was saved, and point at resume. Exit 130 = interrupted by SIGINT.
+  let reactProgress: { done: number; total: number } | undefined;
+  const onEvent: typeof renderer.onEvent = (event) => {
+    if (event.type === "progress" && event.stage === "react") {
+      reactProgress = { done: event.done, total: event.total };
+    }
+    renderer.onEvent(event);
+  };
+  const onSigint = () => {
+    renderer.finish();
+    const saved = reactProgress
+      ? ` — ${reactProgress.done}/${reactProgress.total} reactions saved`
+      : "";
+    stderr.write(`\n${paint("yellow", "✋", color)} interrupted${saved}\n`);
+    stderr.write(paint("dim", `  continue with: wt-cli resume ${input.runId}\n`, color));
+    process.exit(130);
+  };
+  process.once("SIGINT", onSigint);
+
   try {
-    const summary = await executeRun(store, { source, models, onEvent: renderer.onEvent });
+    const summary = await executeRun(store, { source, models, onEvent });
     renderer.finish();
 
     renderSummary({
@@ -180,8 +202,9 @@ export async function executeAndRender(
     return 0;
   } catch (e) {
     renderer.finish();
-    stderr.write(`${paint("red", "✗", color)} ${e instanceof Error ? e.message : String(e)}\n`);
-    stderr.write(`${paint("dim", `resume with: wt-cli resume ${input.runId}`, color)}\n`);
+    renderError(e, stderr, { resumeId: input.runId });
     return 1;
+  } finally {
+    process.off("SIGINT", onSigint);
   }
 }

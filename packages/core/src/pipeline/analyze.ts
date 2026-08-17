@@ -13,6 +13,7 @@
 import { generateText, type LanguageModel, Output } from "ai";
 import { z } from "zod";
 import { averageScore, percentages, sentimentCounts } from "../analysis/scoring";
+import { stageTimeoutSignal } from "../models/stages";
 import { outputLangName } from "../schemas";
 import type { FlameResult, Opinion, OpinionScore, OutputLang, Trigger } from "../types";
 import { sanitizePromptInput } from "../util/sanitize";
@@ -84,6 +85,7 @@ export async function scoreOpinions(opts: ScoreOptions): Promise<ScoreResult> {
         output: Output.object({ schema }),
         system,
         prompt: `Post content: ${topic}\n\nReactions:\n${reactionsBlock}\n\nScore every reaction.`,
+        abortSignal: stageTimeoutSignal("score"),
       });
       // Compose the signed score. Non-neutral intensities clamp to [20, 100] so
       // the stance always lands in its sentiment band (threshold ±20).
@@ -102,6 +104,7 @@ export async function scoreOpinions(opts: ScoreOptions): Promise<ScoreResult> {
   const byId = new Map<string, OpinionScore>();
   const warnings: string[] = [];
   let failedBatches = 0;
+  let lastFailure: unknown;
   settled.forEach((result, i) => {
     if (result.status === "fulfilled") {
       for (const s of result.value) {
@@ -109,12 +112,14 @@ export async function scoreOpinions(opts: ScoreOptions): Promise<ScoreResult> {
       }
     } else {
       failedBatches++;
+      lastFailure = result.reason;
       const reason = result.reason instanceof Error ? result.reason.message : String(result.reason);
       warnings.push(`score batch ${i + 1}/${batches.length} failed: ${reason}`);
     }
   });
   if (failedBatches === batches.length && batches.length > 0) {
-    throw new Error(`all ${batches.length} score batches failed`);
+    // cause preserved so the CLI error classifier can see the network layer.
+    throw new Error(`all ${batches.length} score batches failed`, { cause: lastFailure });
   }
 
   // Opinions from failed batches (or ids the model still missed) score 0 so
@@ -218,6 +223,7 @@ export async function analyzeVerdict(opts: VerdictOptions): Promise<FlameResult>
   const { output } = await generateText({
     model: opts.model,
     temperature: 0.1,
+    abortSignal: stageTimeoutSignal("verdict"),
     output: Output.object({ schema: verdictGenSchema }),
     system,
     prompt: `${ja ? "投稿内容" : "Post content"}: ${topic}\n\n${statsBlock}\n\n${sampleNote}\n${reactionsBlock}\n\n${instructions}`,

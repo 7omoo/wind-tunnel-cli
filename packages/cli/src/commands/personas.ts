@@ -12,6 +12,7 @@ import {
   poolExists,
   pullCountryPool,
 } from "@wind-tunnel/core";
+import { renderError } from "../errors";
 import { formatDuration, paint, useColor } from "../render/format";
 
 export async function personasPullCommand(code: string, opts: { cap?: number }): Promise<number> {
@@ -28,6 +29,14 @@ export async function personasPullCommand(code: string, opts: { cap?: number }):
   const preset = COUNTRY_PRESETS[country];
   const cap = opts.cap ?? preset.defaultCap;
   const started = Date.now();
+
+  // Ctrl-C mid-pull is safe by design (the pool only changes in the final
+  // transactional swap) — say so instead of dying silently.
+  const onSigint = () => {
+    stderr.write(`\n${paint("yellow", "✋", color)} pull interrupted — the pool is unchanged\n`);
+    process.exit(130);
+  };
+  process.once("SIGINT", onSigint);
 
   stderr.write(
     `${paint("bold", "▸", color)} pulling ${COUNTRY_LABELS[country]} (${preset.datasetId}, cap ${cap}/region)\n`,
@@ -65,8 +74,10 @@ export async function personasPullCommand(code: string, opts: { cap?: number }):
     );
     return 0;
   } catch (e) {
-    stderr.write(`${paint("red", "✗", color)} ${e instanceof Error ? e.message : String(e)}\n`);
+    renderError(e, stderr);
     return 1;
+  } finally {
+    process.off("SIGINT", onSigint);
   }
 }
 

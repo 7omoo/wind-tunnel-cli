@@ -4,6 +4,7 @@
 // group. Plain stdout, so `wt-cli detail | less` pages naturally.
 
 import { classifySentiment, RunStore } from "@wind-tunnel/core";
+import { renderError } from "../errors";
 import { clip, displayWidth, paint, useColor, wrap } from "../render/format";
 import { GROUP_STYLES } from "../render/summary";
 import { latestRunDir, resolveRunDir } from "../runs";
@@ -147,9 +148,7 @@ export async function detailCommand(
     stdout.write(`${out.join("\n")}\n`);
     return 0;
   } catch (e) {
-    process.stderr.write(
-      `${paint("red", "✗", useColor(process.stderr))} ${e instanceof Error ? e.message : String(e)}\n`,
-    );
+    renderError(e);
     return 1;
   }
 }

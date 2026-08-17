@@ -5,6 +5,7 @@
 
 import { generateText, type LanguageModel, Output } from "ai";
 import { z } from "zod";
+import { stageTimeoutSignal } from "../models/stages";
 import { outputLangName } from "../schemas";
 import type {
   Opinion,
@@ -36,6 +37,7 @@ export async function extractPropositions(opts: {
   const { output } = await generateText({
     model: opts.model,
     temperature: 0.1,
+    abortSignal: stageTimeoutSignal("propositions"),
     output: Output.object({ schema }),
     system: `You are an expert in public opinion analysis. Extract specific propositions that can be voted on as agree/disagree from multiple opinions. Output the propositions in ${lang}.`,
     prompt: `Extract 10-15 specific propositions that can be answered with agree/disagree/neutral from the following ${opts.opinions.length} opinions.
@@ -89,6 +91,7 @@ export async function classifyStances(opts: {
       const { output } = await generateText({
         model: opts.model,
         temperature: 0.1,
+        abortSignal: stageTimeoutSignal("stance"),
         output: Output.object({ schema }),
         system:
           "You are a stance classifier. For each opinion, decide for every proposition whether the opinion agrees (1), disagrees (-1), or is neutral/unrelated (0).",
@@ -152,6 +155,7 @@ export async function labelAxes(opts: {
     const { output } = await generateText({
       model: opts.model,
       temperature: 0.1,
+      abortSignal: stageTimeoutSignal("axis_labels"),
       output: Output.object({ schema }),
       system: `You are an expert in public opinion analysis. Interpret the meaning of PCA axes. Output in ${lang}.`,
       prompt: `Below are ${opts.k} principal component axes, each with its highest-contributing propositions. For each axis, express the opposing dimensions it represents with a short ${lang} label of the form "AAA ←→ BBB".
@@ -271,6 +275,7 @@ export async function generateGroupProfilesAndMinority(opts: {
     const { output } = await generateText({
       model: opts.model,
       temperature: 0.1,
+      abortSignal: stageTimeoutSignal("profiles"),
       output: Output.object({ schema }),
       system: `You are an expert in opinion group analysis${hasMinority ? " and minority blind-spot analysis" : ""}. Profile each opinion group independently${hasMinority ? ", then surface what the majority overlooks about the minority" : ""}. Output in ${lang}.`,
       prompt: `Analyze each opinion group below and create a profile for each.${hasMinority ? " Then write a minority report." : ""}
