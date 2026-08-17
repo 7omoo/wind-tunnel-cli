@@ -110,6 +110,17 @@ export async function clusterOpinions(
     }
   }
 
+  // Honesty rule: k-means always produces k groups, even for a unanimous
+  // corpus — which then reads as two camps with near-identical beliefs
+  // (observed in production). Below the customary "no substantial structure"
+  // silhouette threshold (Kaufman & Rousseeuw, 0.25) the split is fabricated,
+  // so collapse to a single group and let the output say "one camp".
+  const SILHOUETTE_MIN = 0.25;
+  if (bestScore < SILHOUETTE_MIN) {
+    bestK = 1;
+    bestLabels = opinions.map(() => 0);
+  }
+
   // Empty clusters happen when k-means places two centroids on identical votes
   // (uniform corpora); they carry no members and would otherwise surface as
   // "group N (0)" with a fabricated profile — drop them.
@@ -125,10 +136,12 @@ export async function clusterOpinions(
     return { id: k, size: memberIds.length, centroid, memberIds };
   }).filter((c) => c.size > 0);
 
-  // Phases 6-8: consensus / division / bridging (pure math).
+  // Phases 6-8: consensus / division / bridging (pure math). Division and
+  // bridging are between-group concepts — meaningless for a single camp.
   const consensus = detectConsensus(voteMatrix, bestLabels, propositions);
-  const divisive = detectDivision(voteMatrix, bestLabels, propositions);
-  const bridging = computeBridging(voteMatrix, bestLabels, propositions);
+  const divisive = clusters.length >= 2 ? detectDivision(voteMatrix, bestLabels, propositions) : [];
+  const bridging =
+    clusters.length >= 2 ? computeBridging(voteMatrix, bestLabels, propositions) : [];
 
   // Phases 4 + 9/10 in parallel.
   const [axisLabels, profilesAndMinority] = await Promise.all([

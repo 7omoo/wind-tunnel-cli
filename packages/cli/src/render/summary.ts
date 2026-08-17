@@ -165,22 +165,26 @@ export function renderSummary(
   }
 
   // ── Opinion groups: the centerpiece — each group speaks ──
+  // A single card means the crowd is effectively unanimous (the pipeline only
+  // splits when the vote matrix has real structure); it is labeled as such
+  // instead of pretending to be a faction. Values/axes live in `detail`.
   if (data.cluster?.groupProfiles?.length) {
+    const single = data.cluster.groupProfiles.length === 1;
     const maxSize = Math.max(1, ...data.cluster.clusters.map((cl) => cl.size));
     data.cluster.groupProfiles.forEach((g, gi) => {
       const cluster = data.cluster?.clusters.find((cl) => cl.id === g.clusterId);
       const size = cluster?.size ?? 0;
       const name = g.name || `group ${gi + 1}`;
       const style = GROUP_STYLES[gi % GROUP_STYLES.length] ?? "cyan";
-      const bar = paint(style, "█".repeat(Math.max(1, Math.round((size / maxSize) * 16))), color);
+      const bar = single
+        ? ""
+        : `  ${paint(style, "█".repeat(Math.max(1, Math.round((size / maxSize) * 16))), color)}`;
+      const count = single ? `all ${size}` : String(size);
 
       lines.push("");
-      lines.push(`${c(style, "◆")} ${c("bold", clip(name, WIDTH - 24))} (${size})  ${bar}`);
+      lines.push(`${c(style, "◆")} ${c("bold", clip(name, WIDTH - 24))} (${count})${bar}`);
       if (g.coreBelief) {
         lines.push(...wrap(g.coreBelief, WIDTH - 2).map((l) => `  ${l}`));
-      }
-      if (g.keyValues.length > 0) {
-        lines.push(c("dim", `  ${clip(g.keyValues.join(" · "), WIDTH - 2)}`));
       }
       // Real member voices ground the belief line (clamped to two lines each).
       const voices = pickGroupVoices(cluster?.memberIds ?? [], data.opinions, data.scores);
@@ -189,14 +193,6 @@ export function renderSummary(
         lines.push(c("dim", `    — ${clip(voiceAttribution(v.opinion), WIDTH - 6)}`));
       }
     });
-    if (data.cluster.axes?.length) {
-      const axesText = `axes: ${data.cluster.axes
-        .slice(0, 2)
-        .map((a) => `${a.label} (${a.variancePct}%)`)
-        .join(" · ")}`;
-      lines.push("");
-      lines.push(...wrap(axesText, WIDTH - 2, "  ").map((l) => c("dim", `  ${l}`)));
-    }
   }
 
   // ── Minority view: what the majority overlooks ──

@@ -100,6 +100,26 @@ describe("clusterOpinions", () => {
     expect(clusterOf.get("pro0")).not.toBe(clusterOf.get("con0"));
   });
 
+  it("collapses to a single group when the corpus is unanimous (honesty rule)", async () => {
+    // Every opinion votes identically -> silhouette carries no structure ->
+    // the fabricated k>=2 split must collapse instead of showing twin camps.
+    const unanimous = Array.from({ length: 8 }, (_, i) => opinion(`u${i}`, `賛成です ${i}`));
+    const { result } = await clusterOpinions({
+      topic: "テーマ",
+      opinions: unanimous,
+      propositionSample: unanimous,
+      outputLang: "ja",
+      models: models(clusterModel()),
+      concurrency: 4,
+    });
+    expect(result.clusters).toHaveLength(1);
+    expect(result.clusters[0]?.size).toBe(8);
+    expect(result.groupProfiles).toHaveLength(1);
+    expect(result.minorityReport).toBeNull();
+    expect(result.divisive).toEqual([]);
+    expect(result.bridging).toBeUndefined();
+  });
+
   it("rejects corpora too small to cluster", async () => {
     await expect(
       clusterOpinions({

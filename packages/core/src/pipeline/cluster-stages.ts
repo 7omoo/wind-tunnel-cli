@@ -252,7 +252,7 @@ export async function generateGroupProfilesAndMinority(opts: {
         groups: z.array(groupSchema).length(clusters.length),
         minority: z.object({
           narrative: z.string(),
-          blindSpots: z.array(z.string()).min(1).max(5),
+          blindSpots: z.array(z.string()).min(1).max(3),
         }),
       })
     : z.object({ groups: z.array(groupSchema).length(clusters.length) });
@@ -276,6 +276,16 @@ export async function generateGroupProfilesAndMinority(opts: {
       prompt: `Analyze each opinion group below and create a profile for each.${hasMinority ? " Then write a minority report." : ""}
 
 ${groupBlocks}${minorityBlock}
+
+Rules:
+- name: a vivid 2-4 word ${lang} label for the camp — NEVER a generic label like "Group 1"
+- coreBelief: exactly one sentence${clusters.length >= 2 ? ", emphasizing what DISTINGUISHES this group from the others" : ""}${
+        hasMinority
+          ? `
+- minority.narrative: AT MOST 2 sentences
+- minority.blindSpots: 1-3 items, each ONE short sentence`
+          : ""
+      }
 
 Return exactly ${clusters.length} group profiles, in the SAME ORDER as the groups listed above.`,
     });

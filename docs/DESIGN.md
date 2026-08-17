@@ -58,6 +58,12 @@ principle carried over from the original app: almost everything rides on a small
 cheap model; only a handful of calls need a strong one. That ratio is what makes
 full-local viable.
 
+Clustering carries an honesty rule: when the best silhouette score falls below
+0.25 (Kaufman & Rousseeuw's "no substantial structure" threshold), the forced
+k>=2 split collapses to a single group — a unanimous crowd is reported as one
+camp instead of two factions with identical beliefs. Division and bridging are
+between-group measures and are skipped in that case.
+
 Stage 3a/3b run concurrently only when their models don't compete for the same
 Ollama slot (see §6). Stage 2 emits opinions through an async generator; the CLI
 consumes it for progress display and appends each opinion to the run's JSONL
@@ -260,10 +266,10 @@ analysis = "ollama:qwen3:14b"
 premium  = "ollama:qwen3:14b"
 
 [run]
-country     = "jp"
+country     = "usa"
 personas    = 100
 batch       = 5                # requests in flight for batched stages
-output_lang = "ja"             # ja | en — language of the analysis output
+output_lang = "en"             # defaults to the pool country's language (jp -> ja, others -> en)
 
 [ollama]
 host = "http://localhost:11434"

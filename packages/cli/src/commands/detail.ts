@@ -70,6 +70,13 @@ export async function detailCommand(
           .join("   "),
       );
     }
+    if (cluster?.axes?.length) {
+      const axesText = `axes: ${cluster.axes
+        .slice(0, 2)
+        .map((a) => `${a.label} (${a.variancePct}%)`)
+        .join(" · ")}`;
+      out.push(...wrap(axesText, w - 2, "  ").map((l) => c("dim", l)));
+    }
 
     // ── Proposition × group agreement table ──
     if (cluster && groups.length > 0 && cluster.propositions.length > 0 && !filter) {
