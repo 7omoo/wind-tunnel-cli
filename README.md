@@ -38,15 +38,38 @@ Country presets build on NVIDIA's
 (CC BY 4.0): Japan, USA, India, Brazil, France, Korea, Vietnam, Belgium.
 Custom pools can be plugged in via a TOML dataset definition.
 
+## Docker
+
+For Linux hosts with an NVIDIA GPU, `compose.yaml` bundles an Ollama service
+with GPU passthrough:
+
+```
+docker compose up -d ollama
+docker compose run --rm ollama-pull                      # fetch role models
+docker compose run --rm windtunnel personas pull jp
+docker compose run --rm windtunnel run "draft copy..."
+```
+
+On Apple Silicon, containers cannot reach the GPU — run Ollama and the CLI
+natively instead. The image alone also suits CI/cloud runs pointed at a remote
+`OLLAMA_HOST`.
+
 ## Development
 
 Requires Node >= 20 and pnpm.
 
 ```
 pnpm install
-pnpm test
-pnpm build
+pnpm test          # unit suites; Ollama-dependent tests skip without a daemon
+pnpm build         # bundles the CLI into packages/cli/dist
+node packages/cli/dist/index.js doctor
 ```
+
+Integration tests run automatically when a local Ollama daemon with
+`qwen3:0.6b` is present. The live Hugging Face ingest test is opt-in:
+`WT_TEST_HF=1 pnpm exec vitest run packages/core/tests/ingest-hf.test.ts`.
+
+Release process: [docs/RELEASE.md](docs/RELEASE.md).
 
 ## License
 

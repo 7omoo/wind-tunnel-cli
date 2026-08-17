@@ -1,0 +1,50 @@
+# Linux + NVIDIA setup: Ollama with GPU passthrough plus the CLI.
+#
+#   docker compose up -d ollama
+#   docker compose run --rm ollama-pull        # fetch the default role models
+#   docker compose run --rm windtunnel personas pull jp
+#   docker compose run --rm windtunnel run "draft copy..."
+#
+# On Apple Silicon, skip this file: containers cannot use the GPU. Run Ollama
+# and the CLI natively instead.
+
+services:
+  ollama:
+    image: ollama/ollama
+    volumes:
+      - ollama-models:/root/.ollama
+    environment:
+      # Reaction batches fan out; give the daemon matching parallelism.
+      OLLAMA_NUM_PARALLEL: "8"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  # One-shot helper: pull the default role models into the ollama volume.
+  ollama-pull:
+    image: ollama/ollama
+    depends_on: [ollama]
+    volumes:
+      - ollama-models:/root/.ollama
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: /bin/sh
+    command: ["-c", "ollama pull qwen3:8b && ollama pull qwen3:14b"]
+
+  windtunnel:
+    build: .
+    depends_on: [ollama]
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    volumes:
+      - windtunnel-data:/data
+      - windtunnel-config:/config
+
+volumes:
+  ollama-models:
+  windtunnel-data:
+  windtunnel-config:

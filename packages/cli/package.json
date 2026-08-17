@@ -13,18 +13,37 @@
   "engines": {
     "node": ">=20"
   },
+  "keywords": [
+    "llm",
+    "ollama",
+    "persona",
+    "simulation",
+    "synthetic-audience",
+    "backlash",
+    "copy-testing",
+    "cli"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/7omoo/wind-tunnel-cli.git"
+  },
+  "homepage": "https://github.com/7omoo/wind-tunnel-cli#readme",
+  "bugs": {
+    "url": "https://github.com/7omoo/wind-tunnel-cli/issues"
+  },
+  "author": "7omo",
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@duckdb/node-api": "1.5.5-r.4",
-    "@wind-tunnel/core": "workspace:*",
     "commander": "^15.0.0",
     "smol-toml": "^1.8.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@wind-tunnel/core": "workspace:*",
     "tsup": "^8.5.1",
     "tsx": "^4.23.12"
   }
