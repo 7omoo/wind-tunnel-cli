@@ -2,205 +2,90 @@
 
 Generate and cluster synthetic opinions from hundreds of local AI personas — a CLI for testing messages before you publish.
 
-Give it a draft (an ad, a post, an announcement). Wind Tunnel runs the text past a
-demographically grounded pool of personas, collects their reactions, and maps the result:
-backlash risk, what triggers whom, where opinion clusters form, and which rewrites defuse
-the heat. A wind tunnel doesn't predict flight — it shows you the forces before you fly.
+Give it a draft (an ad, a post, an announcement). Wind Tunnel shows it to a
+demographically grounded persona pool, generates their reactions with a local
+LLM, and replies with the shape of the crowd — fully local via
+[Ollama](https://ollama.com), nothing leaves your machine.
 
-**Status: pre-alpha.** The pipeline runs end to end locally; packaging and
-polish are in progress. See [docs/DESIGN.md](docs/DESIGN.md) for the
-architecture.
+```console
+$ wt-cli run "Introducing a 4-day work week. However, salaries will be reduced by 10%."
+
+Backlash index  ████████████████████░░░░  85 / 100  HIGH
+Voices          ████████████████████████  critical 83% (5) · neutral 17% · favorable 0%
+
+Triggers
+  1. "salaries will be reduced by 10%" (High) → employees in structured,
+     mission-critical, or low-margin industries
+
+◆ Pay-First Skeptics (4)  ████████████████
+  They believe that reducing pay to shorten the work week is inherently
+  disrespectful and fails to address the real issues workers face.
+  「I don't like it at all—cutting pay just to work fewer days is plain
+  foolish. You can't expect people to do more with less…」
+    — 79 · not_in_workforce · Lincoln, AR
+...
+```
+
+## What you get
+
+- **Backlash index & voice split** — how hot it runs, at a glance
+- **Triggers** — which wording offends which segment
+- **Opinion groups** — the camps that form, each with its belief and real
+  member voices, plus a minority report on what the majority overlooks
+  (a unanimous crowd is honestly shown as one camp)
+- **Rewrites** — alternatives that keep your intent but defuse the heat
+- **`wt-cli detail`** — every voice in full and the proposition × group table
+- **Plain artifacts** per run (JSONL / JSON / CSV) for pandas, R, or Excel
+
+## Setup
+
+Requires Node >= 20 and [Ollama](https://ollama.com/download):
+
+```
+brew install ollama && brew services start ollama   # macOS (or the desktop app)
+ollama pull qwen3:8b && ollama pull qwen3:14b       # role models (one-time, ~15 GB)
+```
 
 ## Quickstart
 
 ```
-wt-cli doctor                  # check Ollama and the role models
-wt-cli personas pull usa       # stream a persona pool (Hugging Face -> local pool)
-wt-cli run "draft copy..."     # sample -> react -> analyze -> cluster -> suggest
+npx wind-tunnel doctor              # verifies the setup, tells you exactly what's missing
+npx wind-tunnel personas pull usa   # streams a persona pool from Hugging Face (~30 s)
+npx wind-tunnel run "draft copy..."
 ```
 
-A pull is fast: the datasets' rows are randomly distributed across their
-parquet files, so the ingest streams only the columns it needs from only as
-many files as it takes to fill every region's quota (Japan: ~20 s instead of
-a 1.73 GB download).
+Installed globally (`npm i -g wind-tunnel`) the command is `wt-cli`. Runs are
+resumable (`wt-cli resume <run-id>`) and every option — countries, audience
+filters, situations, model overrides — is in the
+[command reference](docs/commands.md).
 
-Runs fully local against [Ollama](https://ollama.com), or hybrid with a cloud model for
-the handful of analysis calls that benefit from a larger model. Results are written as
-plain JSON / JSONL / CSV, so they drop straight into pandas, R, or a spreadsheet.
+Persona pools cover 8 countries (USA, Japan, India, Brazil, France, Korea,
+Vietnam, Belgium), built on NVIDIA's
+[Nemotron-Personas](https://huggingface.co/datasets?search=Nemotron-Personas)
+datasets (CC BY 4.0); custom pools plug in via `--personas-file`.
 
-## Commands
+## Documentation
 
-### `wt-cli run "<message>"`
-
-Runs the full pipeline with a live view (recent voices + progress), then
-replies with a summary built around the opinion groups: overall temperature
-(backlash index, voice split), triggers, one card per group — its belief, its
-values, and one or two real member voices — the minority's view of what the
-majority overlooks, and rewrite suggestions. Full individual voices live
-behind `wt-cli detail`.
-
-Audience selection:
-
-| Option | Default | Meaning |
-| --- | --- | --- |
-| `--country <code>` | `usa` | persona pool: `jp` `usa` `in` `br` `fr` `kr` `vn` `be` (pull it first) |
-| `--personas <n>` | `100` | how many personas react (1–1000) |
-| `--region <name>` | nationwide | restrict to one region, e.g. `--region 関東地方`, `--region CA` |
-| `--age-min / --age-max <n>` | none | age range filter |
-| `--sex <M\|F>` | none | sex filter (normalized codes work for every country) |
-| `--personas-file <path>` | — | use a custom JSON pool instead of the pulled one |
-
-Framing:
-
-| Option | Default | Meaning |
-| --- | --- | --- |
-| `--situation <id>` | `sns_viral` | where the personas are "speaking": `anon_board` (anonymous board, hottest), `sns_viral`, `news_comment`, `public_comment`, `real_sns` (real-name, measured), `consumer_survey` (neutral baseline) |
-| `--context <text>` | none | background text shown to every persona alongside the message |
-| `--output-lang <ja\|en>` | follows country | language of the analysis output (reactions always come in the pool's language) |
-
-Execution:
-
-| Option | Default | Meaning |
-| --- | --- | --- |
-| `--batch <n>` | `5` | requests in flight for the batched stages (capped by the daemon's `OLLAMA_NUM_PARALLEL`, default 4) |
-| `--profile <local\|hybrid>` | `local` | `hybrid` sends the ~4 analysis calls to Gemini (needs `GEMINI_API_KEY`) |
-| `--model-bulk / --model-analysis / --model-premium <spec>` | qwen3 8B/14B | override a role model, e.g. `ollama:llama3.3`, `gemini:gemini-2.5-flash` |
-| `--host <url>` | `http://localhost:11434` | Ollama daemon address |
-
-Examples:
-
-```
-wt-cli run "採用告知のドラフト…" --personas 200 --situation anon_board
-wt-cli run "Ad copy draft…" --country usa --region CA --age-min 18 --age-max 34
-wt-cli run "…" --profile hybrid --output-lang en
-```
-
-### `wt-cli personas`
-
-```
-wt-cli personas pull <code>      # fetch a country preset into the local pool
-wt-cli personas pull usa --cap 800   # per-region sampling cap (default varies by country)
-wt-cli personas list             # installed pools with size and version
-```
-
-### `wt-cli detail [run-id]`
-
-The drill-down behind the summary: the proposition × group agreement table
-(consensus rows marked) and every voice in full — score, group, persona, the
-reaction, and the scorer's reasoning — sorted most-critical first. Defaults to
-the latest run; `--group <n>` narrows to one group. Pipes cleanly:
-`wt-cli detail | less`.
-
-### `wt-cli resume <run-id>`
-
-Continues an interrupted run from its checkpoint. Reactions already generated
-are never redone; completed stages are skipped. Also accepts a path to a run
-directory.
-
-### `wt-cli doctor`
-
-Checks daemon reachability, whether the role models are installed (with the
-exact `ollama pull` commands when not), what is loaded right now, and how to
-raise daemon parallelism.
-
-### `wt-cli init`
-
-Interactive setup — writes `config.toml` so your defaults stick.
-
-## Configuration
-
-Settings resolve in this order: built-in defaults < `config.toml` < `WT_*`
-environment variables < command-line flags.
-
-`~/.config/wind-tunnel/config.toml` (see `wt-cli init`):
-
-```toml
-profile = "local"            # local | hybrid
-
-[model]
-bulk = "ollama:qwen3:8b"     # reactions & classification (~100+ calls)
-analysis = "ollama:qwen3:14b" # verdict, propositions, group profiles (~3 calls)
-premium = "ollama:qwen3:14b"  # rewrite suggestions (1 call)
-
-[run]
-country = "usa"
-personas = 100
-batch = 5
-output_lang = "en"   # defaults to the pool country's language (jp -> ja, others -> en)
-
-[ollama]
-host = "http://localhost:11434"
-```
-
-Environment variables: `WT_PROFILE`, `WT_MODEL_BULK`, `WT_MODEL_ANALYSIS`,
-`WT_MODEL_PREMIUM`, `WT_COUNTRY`, `WT_PERSONAS`, `WT_BATCH`, `WT_OUTPUT_LANG`,
-`WT_SITUATION`, `WT_OLLAMA_HOST` (or `OLLAMA_HOST`), `GEMINI_API_KEY`.
-
-## Run artifacts
-
-Every run writes plain files under `~/.local/share/wind-tunnel/runs/<run-id>/`
-(`$XDG_DATA_HOME` respected). This layout doubles as the resume checkpoint and
-the machine-readable output:
-
-| File | Contents |
+| | |
 | --- | --- |
-| `input.json` | message, filters, models — everything needed to reproduce the run |
-| `personas.json` | the sampled personas |
-| `opinions.jsonl` | one reaction per line, appended as generated (`pandas.read_json(..., lines=True)`) |
-| `scores.json` | per-opinion sentiment scores (-100..+100 with reasons) |
-| `analyze.json` | verdict: backlash index, triggers, safe version |
-| `cluster.json` | propositions, vote-matrix clusters, consensus/division, minority report |
-| `suggest.json` | rewrite alternatives + common ground |
-| `result.csv` | flat export for spreadsheets / R / SPSS (UTF-8 BOM, Excel-safe) |
-| `status.json` | stage marker, timestamps, warnings |
-
-## Persona data
-
-Country presets build on NVIDIA's
-[Nemotron-Personas datasets](https://huggingface.co/datasets?search=Nemotron-Personas)
-(CC BY 4.0): Japan, USA, India, Brazil, France, Korea, Vietnam, Belgium.
-Custom pools work today as JSON files via `--personas-file`; a TOML dataset
-definition (map any CSV/parquet source) is planned.
-
-## Docker
-
-For Linux hosts with an NVIDIA GPU, `compose.yaml` bundles an Ollama service
-with GPU passthrough:
-
-```
-docker compose up -d ollama
-docker compose run --rm ollama-pull                      # fetch role models
-docker compose run --rm windtunnel personas pull usa
-docker compose run --rm windtunnel run "draft copy..."
-```
-
-On Apple Silicon, containers cannot reach the GPU — run Ollama and the CLI
-natively instead. The image alone also suits CI/cloud runs pointed at a remote
-`OLLAMA_HOST`.
+| [Commands & configuration](docs/commands.md) | every command and option, config.toml, env vars, run artifacts |
+| [Docker](docs/docker.md) | Linux + NVIDIA compose setup, image usage |
+| [Design](docs/DESIGN.md) | architecture and the decisions behind it |
+| [Releasing](docs/RELEASE.md) | maintainer release checklist |
 
 ## Development
 
-Requires Node >= 20 and pnpm.
-
 ```
-pnpm install
-pnpm test          # unit suites; Ollama-dependent tests skip without a daemon
-pnpm build         # bundles the CLI into packages/cli/dist
-node packages/cli/dist/index.js doctor
+pnpm install && pnpm test && pnpm build
+node packages/cli/dist/index.js doctor        # or: cd packages/cli && npm link
 ```
 
-To use the checkout as the `wt-cli` command: `cd packages/cli && npm link`.
-
-Integration tests run automatically when a local Ollama daemon with
-`qwen3:0.6b` is present. The live Hugging Face ingest test is opt-in:
-`WT_TEST_HF=1 pnpm exec vitest run packages/core/tests/ingest-hf.test.ts`.
-
-Release process: [docs/RELEASE.md](docs/RELEASE.md).
+Ollama-dependent tests skip themselves without a daemon; the live ingest test
+is opt-in (`WT_TEST_HF=1`).
 
 ## License
 
-[Apache-2.0](LICENSE). Bundled third-party code is listed with its license
-texts in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) (all permissive:
-Apache-2.0 / MIT / ISC / BSD-3-Clause). The Nemotron-Personas datasets are
-CC BY 4.0 and are fetched by users directly from Hugging Face, not
-redistributed here.
+[Apache-2.0](LICENSE). Bundled third-party licenses:
+[THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md). Persona datasets are
+CC BY 4.0 and fetched by users directly from Hugging Face, not redistributed
+here.
