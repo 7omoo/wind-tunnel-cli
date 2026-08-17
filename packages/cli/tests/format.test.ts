@@ -1,5 +1,60 @@
 import { describe, expect, it } from "vitest";
-import { clip, displayWidth, formatDuration, progressBar, wrap } from "../src/render/format";
+import {
+  clip,
+  displayWidth,
+  formatDuration,
+  gauge,
+  progressBar,
+  segmentedBar,
+  wrap,
+} from "../src/render/format";
+
+describe("gauge", () => {
+  it("fills by value with a dim remainder (colors off)", () => {
+    expect(gauge(50, 100, 10, "red", false)).toBe("█".repeat(5) + "░".repeat(5));
+    expect(gauge(0, 100, 10, "red", false)).toBe("░".repeat(10));
+    expect(gauge(150, 100, 10, "red", false)).toBe("█".repeat(10)); // clamps
+  });
+});
+
+describe("segmentedBar", () => {
+  const plain = (counts: number[], width: number) =>
+    segmentedBar(
+      counts.map((count) => ({ count, style: "red" as const })),
+      width,
+      false,
+    );
+
+  it("splits the width proportionally and always sums exactly to width", () => {
+    expect(plain([5, 5], 10)).toBe("█".repeat(10));
+    for (const counts of [
+      [7, 3, 5],
+      [1, 1, 1],
+      [99, 1, 0],
+      [14, 3, 3],
+    ]) {
+      expect(plain(counts, 24).length).toBe(24);
+    }
+  });
+
+  it("keeps non-zero segments visible even when they round to zero", () => {
+    // 1 of 100 rounds to 0 cells; the green segment must keep one.
+    const bar = segmentedBar(
+      [
+        { count: 99, style: "red" },
+        { count: 1, style: "green" },
+      ],
+      20,
+      true,
+    );
+    expect(bar).toContain("[32m"); // the green escape survives
+  });
+
+  it("renders an empty total as a dim track", () => {
+    expect(segmentedBar([], 10, false)).toBe("░".repeat(10));
+    expect(segmentedBar([{ count: 0, style: "red" }], 10, false)).toBe("░".repeat(10));
+  });
+});
 
 describe("formatDuration", () => {
   it("renders seconds, minutes and hours", () => {

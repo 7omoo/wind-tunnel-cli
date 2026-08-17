@@ -14,7 +14,7 @@ import {
   type RunInput,
   sentimentCounts,
 } from "@wind-tunnel/core";
-import { clip, formatDuration, paint, useColor, wrap } from "./format";
+import { clip, formatDuration, gauge, paint, segmentedBar, useColor, wrap } from "./format";
 
 const WIDTH = 76;
 
@@ -24,6 +24,9 @@ const RISK_STYLE: Record<RiskLevel, Parameters<typeof paint>[0]> = {
   High: "red",
   Critical: ["red", "bold"],
 };
+
+// Group bars cycle through distinct colors so cluster sizes read at a glance.
+const GROUP_STYLES: Parameters<typeof paint>[0][] = ["cyan", "magenta", "yellow", "blue", "green"];
 
 export type SummaryData = {
   input: RunInput;
@@ -60,7 +63,7 @@ export function renderSummary(
     const risk = data.verdict.riskLevel;
     lines.push("");
     lines.push(
-      `${c("bold", "Backlash index")}  ${c(RISK_STYLE[risk], `${data.verdict.inflammationIndex} / 100  ${risk.toUpperCase()}`)}`,
+      `${c("bold", "Backlash index")}  ${gauge(data.verdict.inflammationIndex, 100, 24, RISK_STYLE[risk], color)}  ${c(RISK_STYLE[risk], `${data.verdict.inflammationIndex} / 100  ${risk.toUpperCase()}`)}`,
     );
     if (data.verdict.summary) lines.push(...wrap(data.verdict.summary, WIDTH));
   }
@@ -70,7 +73,18 @@ export function renderSummary(
     const pct = percentages(counts, data.scores.length);
     lines.push("");
     lines.push(
-      `${c("bold", "Voices")}  ${c("red", `critical ${pct.critical}% (${counts.critical})`)} · neutral ${pct.neutral}% (${counts.neutral}) · ${c("green", `favorable ${pct.favorable}% (${counts.favorable})`)} · mean ${averageScore(data.scores)}`,
+      `${c("bold", "Voices")}          ${segmentedBar(
+        [
+          { count: counts.critical, style: "red" },
+          { count: counts.neutral, style: "gray" },
+          { count: counts.favorable, style: "green" },
+        ],
+        24,
+        color,
+      )}  mean ${averageScore(data.scores)}`,
+    );
+    lines.push(
+      `                ${c("red", `critical ${pct.critical}% (${counts.critical})`)} · ${c("gray", `neutral ${pct.neutral}% (${counts.neutral})`)} · ${c("green", `favorable ${pct.favorable}% (${counts.favorable})`)}`,
     );
   }
 
@@ -91,13 +105,18 @@ export function renderSummary(
   if (data.cluster?.groupProfiles?.length) {
     lines.push("");
     lines.push(c("bold", "Opinion groups"));
-    for (const g of data.cluster.groupProfiles) {
-      const size = data.cluster.clusters.find((cl) => cl.id === g.clusterId)?.size ?? 0;
+    const maxSize = Math.max(1, ...data.cluster.clusters.map((cl) => cl.size));
+    data.cluster.groupProfiles.forEach((g, gi) => {
+      const size = data.cluster?.clusters.find((cl) => cl.id === g.clusterId)?.size ?? 0;
       const name = g.name || `group ${g.clusterId + 1}`;
-      const body = `• ${name} (${size})${g.coreBelief ? ` — ${g.coreBelief}` : ""}`;
-      // Continuation aligns under the text after the bullet.
-      lines.push(...wrap(body, WIDTH - 2, "  ").map((l) => `  ${l}`));
-    }
+      const style = GROUP_STYLES[gi % GROUP_STYLES.length] ?? "cyan";
+      // Size bar scaled to the largest group (min 1 cell so tiny groups stay visible).
+      const bar = paint(style, "█".repeat(Math.max(1, Math.round((size / maxSize) * 16))), color);
+      lines.push(`  ${c(style, "•")} ${clip(name, 40)} ${bar} ${size}`);
+      if (g.coreBelief) {
+        lines.push(...wrap(g.coreBelief, WIDTH - 4).map((l) => c("dim", `    ${l}`)));
+      }
+    });
     if (data.cluster.axes?.length) {
       const axesText = `axes: ${data.cluster.axes
         .slice(0, 2)

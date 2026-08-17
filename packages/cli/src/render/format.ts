@@ -30,6 +30,58 @@ export function progressBar(done: number, total: number, width = 20): string {
   return "█".repeat(filled) + "░".repeat(width - filled);
 }
 
+// Single-value gauge: filled portion in the given style, remainder dim.
+export function gauge(
+  value: number,
+  max: number,
+  width: number,
+  style: Parameters<typeof styleText>[0],
+  enabled: boolean,
+): string {
+  const clamped = Math.min(Math.max(value, 0), max);
+  const filled = Math.round((clamped / max) * width);
+  return (
+    paint(style, "█".repeat(filled), enabled) + paint("dim", "░".repeat(width - filled), enabled)
+  );
+}
+
+export type BarSegment = { count: number; style: Parameters<typeof styleText>[0] };
+
+// Proportional multi-segment bar (largest-remainder rounding so segments sum
+// exactly to `width`; any non-zero segment keeps at least one visible cell).
+export function segmentedBar(segments: BarSegment[], width: number, enabled: boolean): string {
+  const total = segments.reduce((sum, s) => sum + s.count, 0);
+  if (total <= 0) return paint("dim", "░".repeat(width), enabled);
+  const exact = segments.map((s) => (s.count / total) * width);
+  const cells = exact.map((e, i) => (segments[i]!.count > 0 ? Math.max(1, Math.floor(e)) : 0));
+  let used = cells.reduce((a, b) => a + b, 0);
+  // Distribute (or reclaim) the rounding difference by largest remainder.
+  const order = exact
+    .map((e, i) => ({ i, remainder: e - Math.floor(e) }))
+    .sort((a, b) => b.remainder - a.remainder);
+  let k = 0;
+  while (used < width && order.length > 0) {
+    const slot = order[k % order.length]!.i;
+    if (segments[slot]!.count > 0) {
+      cells[slot]!++;
+      used++;
+    }
+    k++;
+  }
+  k = 0;
+  while (used > width && order.length > 0) {
+    const slot = order[order.length - 1 - (k % order.length)]!.i;
+    if ((cells[slot] ?? 0) > 1) {
+      cells[slot]!--;
+      used--;
+    }
+    k++;
+  }
+  return segments
+    .map((s, i) => ((cells[i] ?? 0) > 0 ? paint(s.style, "█".repeat(cells[i]!), enabled) : ""))
+    .join("");
+}
+
 // Display width of one code point: CJK/fullwidth = 2 columns, else 1.
 // Covers the ranges that matter for this tool's output (kana, han, hangul,
 // fullwidth forms, CJK punctuation); zero-width joiners etc. are not handled.

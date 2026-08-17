@@ -3,7 +3,7 @@
 // non-TTY (CI, redirects) gets sparse plain lines.
 
 import type { RunProgressEvent, RunStageName } from "@wind-tunnel/core";
-import { formatDuration, paint, progressBar, useColor } from "./format";
+import { clip, displayWidth, formatDuration, paint, progressBar, useColor } from "./format";
 
 const STAGE_LABELS: Record<RunStageName, string> = {
   filter: "sampling personas",
@@ -52,6 +52,20 @@ export function createProgressRenderer(
       if (event.type === "warning") {
         clearLine();
         stream.write(`${paint("yellow", "⚠", color)} ${event.message}\n`);
+        return;
+      }
+      if (event.type === "opinion") {
+        // Live voice stream: each finished reaction scrolls past while the
+        // progress bar stays pinned below (the paired progress event redraws
+        // it right after). The wait becomes content.
+        const a = event.opinion.attributes;
+        const meta = clip(
+          [a.age ? String(a.age) : "", a.occupation, a.location].filter(Boolean).join(" · "),
+          28,
+        );
+        const text = clip(event.opinion.text, 76 - 2 - displayWidth(meta) - 2);
+        clearLine();
+        stream.write(`  ${paint("dim", meta, color)}  ${text}\n`);
         return;
       }
       if (event.type === "progress") {
