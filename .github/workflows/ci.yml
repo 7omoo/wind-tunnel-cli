@@ -30,14 +30,18 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      # Ollama-dependent integration tests skip themselves when no daemon is
-      # reachable; the live Hugging Face ingest test additionally requires
-      # WT_TEST_HF=1. CI runs the pure suites.
-      - name: Test
-        run: pnpm test
-
+      # Build first: the black-box E2E suite exercises the built binary
+      # (dist/index.js) against an in-process Ollama stub and skips itself
+      # when dist/ is absent.
       - name: Build
         run: pnpm build
+
+      # Ollama-dependent integration tests skip themselves when no daemon is
+      # reachable; the live Hugging Face ingest test additionally requires
+      # WT_TEST_HF=1. CI runs the pure suites, the mocked pipeline and the
+      # black-box E2E, with a coverage summary in the log.
+      - name: Test
+        run: pnpm test:coverage
 
       - name: CLI smoke (built artifact)
         run: node packages/cli/dist/index.js --help

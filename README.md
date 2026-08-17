@@ -71,6 +71,7 @@ datasets (CC BY 4.0); custom pools plug in via `--personas-file`.
 | [Commands & configuration](docs/commands.md) | every command and option, config.toml, env vars, run artifacts |
 | [Docker](docs/docker.md) | Linux + NVIDIA compose setup, image usage |
 | [Design](docs/DESIGN.md) | architecture and the decisions behind it |
+| [Testing](docs/testing.md) | the four-layer test strategy, coverage, what deliberately isn't automated |
 | [Releasing](docs/RELEASE.md) | maintainer release checklist |
 
 ## Development
@@ -80,8 +81,8 @@ pnpm install && pnpm test && pnpm build
 node packages/cli/dist/index.js doctor        # or: cd packages/cli && npm link
 ```
 
-Ollama-dependent tests skip themselves without a daemon; the live ingest test
-is opt-in (`WT_TEST_HF=1`).
+Ollama-dependent tests skip themselves without a daemon; building first also
+enables the black-box E2E of the binary. Strategy: [docs/testing.md](docs/testing.md).
 
 ## License
 

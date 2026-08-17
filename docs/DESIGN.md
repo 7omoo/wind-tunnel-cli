@@ -34,7 +34,7 @@ Secondary: a hybrid profile that keeps the ~4 heavy analysis calls on a cloud mo
 | Publishing | Single npm package `wind-tunnel`; core is bundled in via tsup (`noExternal`) |
 | Distribution | npm first (`npx wind-tunnel`); Docker image second (Linux servers / CI); single binary later if native deps stay isolated to the ingest module |
 | Lint/format | Biome, line width 100, double quotes |
-| Tests | Vitest; unit tests ported from the original codebase where they cover ported modules |
+| Tests | Vitest, four layers (unit / mocked pipeline / black-box E2E over an Ollama stub / self-skipping live integration) — see docs/testing.md |
 | No web framework | No Next.js, no HTTP server, no SSE — the pipeline is plain async functions and generators |
 
 ## 3. Pipeline

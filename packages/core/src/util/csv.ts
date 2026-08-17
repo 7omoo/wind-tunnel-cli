@@ -4,6 +4,10 @@
 import type { Opinion } from "../types";
 
 // RFC 4180 escaping: double the quotes, wrap in quotes when the value contains , " or newlines.
+// Formula injection (=/+/-/@ prefixes) is deliberately NOT escaped: the primary
+// consumers are pandas/R/SPSS, and mangling values with a leading apostrophe
+// corrupts that data. Excel users opening CSVs with LLM-generated text should
+// import untrusted files as text.
 function csvEscape(v: unknown): string {
   if (v === null || v === undefined) return "";
   const s = String(v);
