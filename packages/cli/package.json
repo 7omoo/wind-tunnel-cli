@@ -24,7 +24,11 @@
     "synthetic-audience",
     "backlash",
     "copy-testing",
-    "cli"
+    "cli",
+    "polis",
+    "opinion-clustering",
+    "opinion-mining",
+    "deliberation"
   ],
   "repository": {
     "type": "git",

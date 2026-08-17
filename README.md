@@ -11,7 +11,8 @@ Generate and cluster synthetic opinions from hundreds of local AI personas — a
 
 Give it a draft (an ad, a post, an announcement). Wind Tunnel shows it to a
 demographically grounded persona pool, generates their reactions with a local
-LLM, and replies with the shape of the crowd — fully local via
+LLM, and maps the crowd [Pol.is](https://pol.is)-style — opinion groups,
+consensus, division and the minority view — fully local via
 [Ollama](https://ollama.com), nothing leaves your machine.
 
 ```console
