@@ -1,0 +1,28 @@
+{
+  "name": "wind-tunnel",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Simulate how hundreds of AI personas react to your message — locally, before you publish",
+  "type": "module",
+  "bin": {
+    "windtunnel": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@wind-tunnel/core": "workspace:*",
+    "commander": "^15.0.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.1",
+    "tsx": "^4.23.12"
+  }
+}
