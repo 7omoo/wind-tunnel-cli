@@ -1,4 +1,4 @@
-// `windtunnel resume <run-id>` — continue an interrupted run from its
+// `wt-cli resume <run-id>` — continue an interrupted run from its
 // artifacts. Model choices come from the run's own input.json
 // (reproducibility); only connection settings (host, API key) come from the
 // current config.

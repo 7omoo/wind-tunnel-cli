@@ -1,4 +1,4 @@
-// `windtunnel doctor` — diagnose the local environment: Ollama reachability,
+// `wt-cli doctor` — diagnose the local environment: Ollama reachability,
 // role models present, what's loaded right now. Prints the exact fix command
 // for anything missing. Exit 1 when the local profile could not run as-is.
 

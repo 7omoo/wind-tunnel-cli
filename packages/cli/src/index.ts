@@ -10,7 +10,7 @@ const int = (value: string): number => Number.parseInt(value, 10);
 const program = new Command();
 
 program
-  .name("windtunnel")
+  .name("wt-cli")
   .description("Simulate how hundreds of AI personas react to your message — locally")
   .version("0.1.0");
 

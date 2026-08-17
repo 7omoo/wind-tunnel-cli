@@ -1,4 +1,4 @@
-// `windtunnel run "<message>"` — the full pipeline against a persona pool.
+// `wt-cli run "<message>"` — the full pipeline against a persona pool.
 // Until `personas pull` lands, the pool comes from --personas-file (a JSON
 // pool, same format custom datasets will use).
 
@@ -79,7 +79,7 @@ export async function preflightModels(
 // stage without a real source means the run directory was tampered with.
 const NO_SOURCE: PersonaSource = {
   sample: async () => {
-    throw new Error("persona sampling is only available through `windtunnel run`");
+    throw new Error("persona sampling is only available through `wt-cli run`");
   },
   poolVersion: async () => "unknown",
 };
@@ -99,7 +99,7 @@ export async function runCommand(message: string, flags: RunFlags): Promise<numb
       source = await loadJsonPersonaSource(flags.personasFile);
     } else {
       const poolPath = defaultPoolPath(dataRoot());
-      const pullHint = `windtunnel personas pull ${cfg.run.country}`;
+      const pullHint = `wt-cli personas pull ${cfg.run.country}`;
       if (!(await poolExists(poolPath))) {
         throw new Error(`no persona pool installed — run: ${pullHint} (or pass --personas-file)`);
       }
@@ -180,7 +180,7 @@ export async function executeAndRender(
   } catch (e) {
     renderer.finish();
     stderr.write(`${paint("red", "✗", color)} ${e instanceof Error ? e.message : String(e)}\n`);
-    stderr.write(`${paint("dim", `resume with: windtunnel resume ${input.runId}`, color)}\n`);
+    stderr.write(`${paint("dim", `resume with: wt-cli resume ${input.runId}`, color)}\n`);
     return 1;
   }
 }

@@ -30,7 +30,7 @@ Secondary: a hybrid profile that keeps the ~4 heavy analysis calls on a cloud mo
 | Language | TypeScript (ESM, strict, `noUncheckedIndexedAccess`) |
 | Package manager | pnpm workspace |
 | Packages | `packages/core` (engine, private) + `packages/cli` (npm: `wind-tunnel`) |
-| Binary name | `windtunnel` — `wt` is off-limits (collides with Windows Terminal's `wt.exe`) |
+| Binary name | `wt-cli` (user decision 2026-08-17). `wt` is off-limits (Windows Terminal's `wt.exe`). Accepted risk: Auth0's discontinued webtask CLI (npm package `wt-cli`, last publish 2023) also ships a `wt-cli` bin, so global installs collide on the few machines that still have it. The npm package name stays `wind-tunnel` (`wt-cli` is taken on the registry) |
 | Publishing | Single npm package `wind-tunnel`; core is bundled in via tsup (`noExternal`) |
 | Distribution | npm first (`npx wind-tunnel`); Docker image second (Linux servers / CI); single binary later if native deps stay isolated to the ingest module |
 | Lint/format | Biome, line width 100, double quotes |
@@ -173,7 +173,7 @@ not on Hugging Face and is not part of the CLI.
 
 ### Ingest
 
-`windtunnel personas pull <code>` queries the dataset directly with DuckDB
+`wt-cli personas pull <code>` queries the dataset directly with DuckDB
 (`@duckdb/node-api`) over the `hf://` protocol, projecting only the ~12 needed
 columns (the long free-text persona variants are skipped), stratified-samples
 by region with a per-region cap, validates (region match rate against the known
@@ -277,12 +277,12 @@ cluster names, suggestions).
 
 | Command | Purpose |
 | --- | --- |
-| `windtunnel run "<message>"` | full pipeline; flags: `--country --personas --batch --profile --model-* --context` |
-| `windtunnel resume <run-id>` | continue an interrupted run from its checkpoint |
-| `windtunnel personas pull <code>` | ingest a preset pool from Hugging Face |
-| `windtunnel personas list` | show installed pools (count, version, ingest date) |
-| `windtunnel doctor` | Ollama reachability, models present, effective parallelism, disk |
-| `windtunnel init` | interactive first-run: write config.toml, suggest pulls |
+| `wt-cli run "<message>"` | full pipeline; flags: `--country --personas --batch --profile --model-* --context` |
+| `wt-cli resume <run-id>` | continue an interrupted run from its checkpoint |
+| `wt-cli personas pull <code>` | ingest a preset pool from Hugging Face |
+| `wt-cli personas list` | show installed pools (count, version, ingest date) |
+| `wt-cli doctor` | Ollama reachability, models present, effective parallelism, disk |
+| `wt-cli init` | interactive first-run: write config.toml, suggest pulls |
 
 `run` renders live progress (stage, opinions done/total, elapsed) and finishes
 with a terminal summary: backlash index, top triggers, cluster map sketch, and

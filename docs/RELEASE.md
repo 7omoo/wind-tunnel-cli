@@ -39,7 +39,7 @@ git tag v0.1.0 && git push --tags
 
 Notes:
 
-- The published package is `wind-tunnel` (bin: `windtunnel`). The name was
+- The published package is `wind-tunnel` (bin: `wt-cli`). The name was
   confirmed unclaimed on npm on 2026-08-17 — claim it with the first publish;
   don't sit on it.
 - `@wind-tunnel/core` stays private and unbublished: the CLI bundle compiles it

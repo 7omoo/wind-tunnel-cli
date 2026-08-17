@@ -17,7 +17,7 @@ import { parse as parseToml } from "smol-toml";
 import { z } from "zod";
 
 // Hybrid-profile default for the ~4 analysis/premium calls. Model names rot;
-// `windtunnel init` writes explicit values into config.toml so users pin their own.
+// `wt-cli init` writes explicit values into config.toml so users pin their own.
 const HYBRID_ANALYSIS_MODEL = "gemini:gemini-3.1-pro-preview";
 
 const fileSchema = z.object({

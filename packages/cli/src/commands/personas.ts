@@ -1,4 +1,4 @@
-// `windtunnel personas pull <code>` / `windtunnel personas list` — manage the
+// `wt-cli personas pull <code>` / `wt-cli personas list` — manage the
 // local persona pool.
 
 import {
@@ -76,7 +76,7 @@ export async function personasListCommand(): Promise<number> {
   const path = defaultPoolPath(dataRoot());
   if (!(await poolExists(path))) {
     stderr.write(
-      `no persona pool yet — run: windtunnel personas pull <code>  (${COUNTRY_CODES.join(", ")})\n`,
+      `no persona pool yet — run: wt-cli personas pull <code>  (${COUNTRY_CODES.join(", ")})\n`,
     );
     return 1;
   }

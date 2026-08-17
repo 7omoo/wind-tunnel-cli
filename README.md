@@ -14,9 +14,9 @@ architecture.
 ## Quickstart
 
 ```
-windtunnel doctor                  # check Ollama and the role models
-windtunnel personas pull jp        # stream a persona pool (Hugging Face -> local pool)
-windtunnel run "draft copy..."     # sample -> react -> analyze -> cluster -> suggest
+wt-cli doctor                  # check Ollama and the role models
+wt-cli personas pull jp        # stream a persona pool (Hugging Face -> local pool)
+wt-cli run "draft copy..."     # sample -> react -> analyze -> cluster -> suggest
 ```
 
 A pull is fast: the datasets' rows are randomly distributed across their
@@ -30,7 +30,7 @@ plain JSON / JSONL / CSV, so they drop straight into pandas, R, or a spreadsheet
 
 ## Commands
 
-### `windtunnel run "<message>"`
+### `wt-cli run "<message>"`
 
 Runs the full pipeline and prints a live progress bar, then a summary
 (backlash index, voice split, triggers, opinion groups, rewrite suggestions).
@@ -66,32 +66,32 @@ Execution:
 Examples:
 
 ```
-windtunnel run "採用告知のドラフト…" --personas 200 --situation anon_board
-windtunnel run "Ad copy draft…" --country usa --region CA --age-min 18 --age-max 34
-windtunnel run "…" --profile hybrid --output-lang en
+wt-cli run "採用告知のドラフト…" --personas 200 --situation anon_board
+wt-cli run "Ad copy draft…" --country usa --region CA --age-min 18 --age-max 34
+wt-cli run "…" --profile hybrid --output-lang en
 ```
 
-### `windtunnel personas`
+### `wt-cli personas`
 
 ```
-windtunnel personas pull <code>      # fetch a country preset into the local pool
-windtunnel personas pull jp --cap 5000   # per-region sampling cap (default varies by country)
-windtunnel personas list             # installed pools with size and version
+wt-cli personas pull <code>      # fetch a country preset into the local pool
+wt-cli personas pull jp --cap 5000   # per-region sampling cap (default varies by country)
+wt-cli personas list             # installed pools with size and version
 ```
 
-### `windtunnel resume <run-id>`
+### `wt-cli resume <run-id>`
 
 Continues an interrupted run from its checkpoint. Reactions already generated
 are never redone; completed stages are skipped. Also accepts a path to a run
 directory.
 
-### `windtunnel doctor`
+### `wt-cli doctor`
 
 Checks daemon reachability, whether the role models are installed (with the
 exact `ollama pull` commands when not), what is loaded right now, and how to
 raise daemon parallelism.
 
-### `windtunnel init`
+### `wt-cli init`
 
 Interactive setup — writes `config.toml` so your defaults stick.
 
@@ -100,7 +100,7 @@ Interactive setup — writes `config.toml` so your defaults stick.
 Settings resolve in this order: built-in defaults < `config.toml` < `WT_*`
 environment variables < command-line flags.
 
-`~/.config/wind-tunnel/config.toml` (see `windtunnel init`):
+`~/.config/wind-tunnel/config.toml` (see `wt-cli init`):
 
 ```toml
 profile = "local"            # local | hybrid
@@ -177,7 +177,7 @@ pnpm build         # bundles the CLI into packages/cli/dist
 node packages/cli/dist/index.js doctor
 ```
 
-To use the checkout as the `windtunnel` command: `cd packages/cli && npm link`.
+To use the checkout as the `wt-cli` command: `cd packages/cli && npm link`.
 
 Integration tests run automatically when a local Ollama daemon with
 `qwen3:0.6b` is present. The live Hugging Face ingest test is opt-in:

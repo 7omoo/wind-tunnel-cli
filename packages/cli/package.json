@@ -4,7 +4,7 @@
   "description": "Generate and cluster synthetic opinions from hundreds of local AI personas — a CLI for testing messages before you publish",
   "type": "module",
   "bin": {
-    "windtunnel": "dist/index.js"
+    "wt-cli": "dist/index.js"
   },
   "license": "Apache-2.0",
   "files": [

@@ -1,4 +1,4 @@
-// `windtunnel init` — interactive first-run: write config.toml with explicit
+// `wt-cli init` — interactive first-run: write config.toml with explicit
 // values (so model-name defaults are pinned in the user's file, not in code).
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
