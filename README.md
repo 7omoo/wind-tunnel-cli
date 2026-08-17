@@ -1,6 +1,6 @@
 # Wind Tunnel
 
-Simulate how hundreds of AI personas react to your message — locally, before you publish it.
+Generate and cluster synthetic opinions from hundreds of local AI personas — a CLI for testing messages before you publish.
 
 Give it a draft (an ad, a post, an announcement). Wind Tunnel runs the text past a
 demographically grounded pool of personas, collects their reactions, and maps the result:

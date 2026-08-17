@@ -15,8 +15,13 @@ remove it only as part of executing this checklist.
    permissive licenses (bundled: Apache-2.0 ×7, MIT ×14, ISC ×1; runtime:
    MIT ×5, BSD-3-Clause ×1 — zero copyleft). Regenerate the third-party file
    after dependency changes: `node scripts/generate-third-party-notices.mjs`.
-2. **Tagline.** Final one-line description (package.json `description`, README
-   intro, GitHub repo description).
+2. ~~Tagline.~~ **Resolved 2026-08-17:** "Generate and cluster synthetic
+   opinions from hundreds of local AI personas — a CLI for testing messages
+   before you publish." Applied to package.json, README, and the GitHub repo
+   description. Descriptive over metaphorical by decision — the wind-tunnel
+   metaphor lives in the README body, not the tagline.
+
+No blockers remain — publishing is now just the steps below.
 
 ## Publish steps (npm)
 

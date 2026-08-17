@@ -327,8 +327,6 @@ grounded-research toggles.
 
 ## 13. Open questions
 
-- License (must land before first release)
-- Final tagline / one-line description
 - npm scope `@wind-tunnel` availability (only needed for the open-core split)
 - Default model choices need a local eval pass (Japanese quality at 8B/14B)
 - Windows support level (paths and Ollama detection are written portably, but untested)
