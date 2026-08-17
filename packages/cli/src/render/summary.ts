@@ -114,11 +114,9 @@ export function renderSummary(
       // Continuation aligns under the text after the "N. " marker.
       lines.push(...wrap(`${i + 1}. ${a.text}`, WIDTH - 2, "   ").map((l) => `  ${l}`));
       lines.push(
-        ...wrap(
-          `${a.strategy} · risk reduction ${a.estimatedRiskReduction}`,
-          WIDTH - 5,
-          "     ",
-        ).map((l) => c("dim", `     ${l}`)),
+        ...wrap(`${a.strategy} · risk reduction ${a.estimatedRiskReduction}`, WIDTH - 5).map((l) =>
+          c("dim", `     ${l}`),
+        ),
       );
     });
     if (data.suggest.commonGround) {
