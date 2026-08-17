@@ -3,9 +3,9 @@
 Status: Draft
 Last updated: 2026-08-17
 
-The package is publish-ready except for the deliberate blockers below.
-`packages/cli/package.json` keeps `"private": true` as the safety catch —
-remove it only as part of executing this checklist.
+The package is publish-ready (the `"private": true` safety catch was removed
+2026-08-17 as part of publish prep; the remaining gate is a human running the
+steps below).
 
 ## Blockers (decide before the first release)
 
@@ -23,6 +23,35 @@ remove it only as part of executing this checklist.
 
 No blockers remain — publishing is now just the steps below.
 
+## Versioning policy (alpha = 0.x, decided 2026-08-17)
+
+Plain SemVer with major version zero. `0.x` **is** the alpha signal — the
+SemVer spec reserves it for initial development ("anything MAY change"), and
+the npm ecosystem reads it that way. No `-alpha.N` suffixes and no `alpha`
+dist-tag: that machinery exists for shipping previews *alongside* a stable
+line, and with no stable line yet it would only break `npx wind-tunnel`
+(which installs `latest`).
+
+While on 0.x:
+
+- **patch** (0.1.1) — bug fixes, doc/message tweaks
+- **minor** (0.2.0) — features, and any change to the public contract:
+  flags, summary output, run-artifact schemas (`schemaVersion`), config.toml
+- **1.0.0** — a promise, not a milestone: the contract above freezes and
+  breaking changes start costing a major. Not before real-world usage.
+
+Mechanics: `npm version patch|minor` (run in `packages/cli/`) bumps the
+manifest and creates the commit + matching `vX.Y.Z` tag in one step; then
+publish and `git push --follow-tags`. Keep the npm version and the git tag
+identical, always.
+
+Published versions are immortal: npm blocks unpublish after 72 hours and a
+released number can never be reused. A bad release is fixed by the next
+patch, never by overwriting.
+
+Changelog = GitHub Releases (`gh release create vX.Y.Z --generate-notes`,
+then edit). No CHANGELOG.md file to maintain in-repo.
+
 ## Publish steps (npm)
 
 ```
@@ -32,10 +61,13 @@ pnpm install && pnpm check && pnpm typecheck && pnpm test && pnpm build
 # dry run: verify the tarball contains dist/ + manifest only
 cd packages/cli && npm publish --dry-run
 
-# remove "private": true from packages/cli/package.json, then
 npm publish            # first publish claims the name `wind-tunnel`
-git tag v0.1.0 && git push --tags
+git tag -a v0.1.0 -m "v0.1.0" && git push --follow-tags
+gh release create v0.1.0 --generate-notes
 ```
+
+(From the second release on, `npm version patch|minor` replaces the manual
+bump + tag — see the versioning policy above.)
 
 Notes:
 

@@ -6,6 +6,9 @@
 
 Generate and cluster synthetic opinions from hundreds of local AI personas — a CLI for testing messages before you publish.
 
+> **Status: alpha (0.x).** It works end to end and is tested, but commands,
+> output and artifact schemas may still change between minor versions.
+
 Give it a draft (an ad, a post, an announcement). Wind Tunnel shows it to a
 demographically grounded persona pool, generates their reactions with a local
 LLM, and replies with the shape of the crowd — fully local via
