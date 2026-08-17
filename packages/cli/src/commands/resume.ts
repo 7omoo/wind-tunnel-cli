@@ -3,25 +3,11 @@
 // (reproducibility); only connection settings (host, API key) come from the
 // current config.
 
-import { stat } from "node:fs/promises";
-import { join } from "node:path";
-import { RunStore, runsRoot } from "@wind-tunnel/core";
+import { RunStore } from "@wind-tunnel/core";
 import { type CliFlags, loadConfig } from "../config";
 import { paint, useColor } from "../render/format";
+import { resolveRunDir } from "../runs";
 import { executeAndRender, preflightModels } from "./run";
-
-async function resolveRunDir(idOrPath: string): Promise<string> {
-  // Accept both a run id (under the runs root) and a directory path.
-  const candidates = [join(runsRoot(), idOrPath), idOrPath];
-  for (const dir of candidates) {
-    try {
-      if ((await stat(dir)).isDirectory()) return dir;
-    } catch {
-      // keep trying
-    }
-  }
-  throw new Error(`run not found: ${idOrPath} (looked in ${runsRoot()})`);
-}
 
 export async function resumeCommand(idOrPath: string, flags: CliFlags): Promise<number> {
   const stderr = process.stderr;

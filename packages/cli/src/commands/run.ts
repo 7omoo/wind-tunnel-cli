@@ -170,6 +170,7 @@ export async function executeAndRender(
       input,
       runDir: store.dir,
       elapsedMs: Date.now() - started,
+      opinions: await store.readOpinions(),
       scores: (await store.readScores())?.scores ?? [],
       verdict: (await store.readAnalyze()) ?? null,
       cluster: (await store.readCluster()) ?? null,

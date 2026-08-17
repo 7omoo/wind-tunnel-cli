@@ -1,4 +1,5 @@
 import { Command } from "commander";
+import { detailCommand } from "./commands/detail";
 import { runDoctor } from "./commands/doctor";
 import { initCommand } from "./commands/init";
 import { personasListCommand, personasPullCommand } from "./commands/personas";
@@ -45,6 +46,15 @@ program
   .option("--host <url>", "Ollama base URL")
   .action(async (idOrPath, opts) => {
     process.exitCode = await resumeCommand(idOrPath, opts);
+  });
+
+program
+  .command("detail")
+  .description("Every voice in full plus the proposition × group table for a run")
+  .argument("[run-id]", "run id or path (default: the latest run)")
+  .option("--group <n>", "only voices from group N", int)
+  .action(async (idOrPath, opts) => {
+    process.exitCode = await detailCommand(idOrPath, opts);
   });
 
 const personas = program.command("personas").description("Manage the local persona pool");

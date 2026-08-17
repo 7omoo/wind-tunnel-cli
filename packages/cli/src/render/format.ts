@@ -136,6 +136,22 @@ export function clip(text: string, maxWidth: number): string {
 // the end of the previous line instead (at most a couple of columns over).
 const KINSOKU_NO_START = new Set([..."。、．，）」』】〉》！？：；…ー・)],.!?"]);
 
+// wrap() clamped to a maximum number of lines; the last kept line gets an
+// ellipsis. Used where a long voice must stay a card-sized excerpt.
+export function wrapLines(
+  text: string,
+  maxWidth: number,
+  indent: string,
+  maxLines: number,
+): string[] {
+  const lines = wrap(text, maxWidth, indent);
+  if (lines.length <= maxLines) return lines;
+  const kept = lines.slice(0, maxLines);
+  const last = kept[maxLines - 1] ?? "";
+  kept[maxLines - 1] = clip(`${last}…`, maxWidth);
+  return kept;
+}
+
 export function wrap(text: string, maxWidth: number, indent = ""): string[] {
   const oneLine = text.replace(/\s+/g, " ").trim();
   if (!oneLine) return [];

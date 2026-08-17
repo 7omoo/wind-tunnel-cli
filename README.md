@@ -32,8 +32,12 @@ plain JSON / JSONL / CSV, so they drop straight into pandas, R, or a spreadsheet
 
 ### `wt-cli run "<message>"`
 
-Runs the full pipeline and prints a live progress bar, then a summary
-(backlash index, voice split, triggers, opinion groups, rewrite suggestions).
+Runs the full pipeline with a live view (recent voices + progress), then
+replies with a summary built around the opinion groups: overall temperature
+(backlash index, voice split), triggers, one card per group — its belief, its
+values, and one or two real member voices — the minority's view of what the
+majority overlooks, and rewrite suggestions. Full individual voices live
+behind `wt-cli detail`.
 
 Audience selection:
 
@@ -78,6 +82,14 @@ wt-cli personas pull <code>      # fetch a country preset into the local pool
 wt-cli personas pull jp --cap 5000   # per-region sampling cap (default varies by country)
 wt-cli personas list             # installed pools with size and version
 ```
+
+### `wt-cli detail [run-id]`
+
+The drill-down behind the summary: the proposition × group agreement table
+(consensus rows marked) and every voice in full — score, group, persona, the
+reaction, and the scorer's reasoning — sorted most-critical first. Defaults to
+the latest run; `--group <n>` narrows to one group. Pipes cleanly:
+`wt-cli detail | less`.
 
 ### `wt-cli resume <run-id>`
 
