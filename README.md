@@ -15,7 +15,7 @@ architecture.
 
 ```
 wt-cli doctor                  # check Ollama and the role models
-wt-cli personas pull jp        # stream a persona pool (Hugging Face -> local pool)
+wt-cli personas pull usa       # stream a persona pool (Hugging Face -> local pool)
 wt-cli run "draft copy..."     # sample -> react -> analyze -> cluster -> suggest
 ```
 
@@ -43,7 +43,7 @@ Audience selection:
 
 | Option | Default | Meaning |
 | --- | --- | --- |
-| `--country <code>` | `jp` | persona pool: `jp` `usa` `in` `br` `fr` `kr` `vn` `be` (pull it first) |
+| `--country <code>` | `usa` | persona pool: `jp` `usa` `in` `br` `fr` `kr` `vn` `be` (pull it first) |
 | `--personas <n>` | `100` | how many personas react (1–1000) |
 | `--region <name>` | nationwide | restrict to one region, e.g. `--region 関東地方`, `--region CA` |
 | `--age-min / --age-max <n>` | none | age range filter |
@@ -56,7 +56,7 @@ Framing:
 | --- | --- | --- |
 | `--situation <id>` | `sns_viral` | where the personas are "speaking": `anon_board` (anonymous board, hottest), `sns_viral`, `news_comment`, `public_comment`, `real_sns` (real-name, measured), `consumer_survey` (neutral baseline) |
 | `--context <text>` | none | background text shown to every persona alongside the message |
-| `--output-lang <ja\|en>` | `ja` | language of the analysis output (reactions always come in the pool's language) |
+| `--output-lang <ja\|en>` | follows country | language of the analysis output (reactions always come in the pool's language) |
 
 Execution:
 
@@ -79,7 +79,7 @@ wt-cli run "…" --profile hybrid --output-lang en
 
 ```
 wt-cli personas pull <code>      # fetch a country preset into the local pool
-wt-cli personas pull jp --cap 5000   # per-region sampling cap (default varies by country)
+wt-cli personas pull usa --cap 800   # per-region sampling cap (default varies by country)
 wt-cli personas list             # installed pools with size and version
 ```
 
@@ -123,10 +123,10 @@ analysis = "ollama:qwen3:14b" # verdict, propositions, group profiles (~3 calls)
 premium = "ollama:qwen3:14b"  # rewrite suggestions (1 call)
 
 [run]
-country = "jp"
+country = "usa"
 personas = 100
 batch = 5
-output_lang = "ja"
+output_lang = "en"   # defaults to the pool country's language (jp -> ja, others -> en)
 
 [ollama]
 host = "http://localhost:11434"
@@ -170,7 +170,7 @@ with GPU passthrough:
 ```
 docker compose up -d ollama
 docker compose run --rm ollama-pull                      # fetch role models
-docker compose run --rm windtunnel personas pull jp
+docker compose run --rm windtunnel personas pull usa
 docker compose run --rm windtunnel run "draft copy..."
 ```
 

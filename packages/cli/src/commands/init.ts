@@ -39,10 +39,13 @@ export async function initCommand(): Promise<number> {
     process.stderr.write(
       `${paint("dim", `countries: ${COUNTRY_CODES.map((c) => `${c}=${COUNTRY_LABELS[c]}`).join(" ")}`, color)}\n`,
     );
-    const country = await ask("default country?", "jp");
+    const country = await ask("default country?", "usa");
     const personas = await ask("personas per run?", "100");
     const batch = await ask("batch size (requests in flight)?", "5");
-    const outputLang = await ask("analysis output language? [ja/en]", "ja");
+    const outputLang = await ask(
+      "analysis output language? [ja/en]",
+      country === "jp" ? "ja" : "en",
+    );
     const bulk = await ask("bulk model (reactions, ~100 calls)?", DEFAULT_MODEL_ROLES.bulk);
     const analysis = await ask("analysis model (verdict, ~4 calls)?", DEFAULT_MODEL_ROLES.analysis);
 

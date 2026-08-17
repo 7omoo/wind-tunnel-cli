@@ -122,7 +122,12 @@ export function resolveConfig(opts: {
       flags.modelPremium ?? env.WT_MODEL_PREMIUM ?? file.model?.premium ?? profileDefaults.premium,
   };
 
-  const country = countrySchema.parse(flags.country ?? env.WT_COUNTRY ?? file.run?.country ?? "jp");
+  const country = countrySchema.parse(
+    flags.country ?? env.WT_COUNTRY ?? file.run?.country ?? "usa",
+  );
+  // Analysis language follows the pool's country unless set explicitly, so the
+  // default experience is monolingual end to end (usa -> en, jp -> ja, ...).
+  const derivedOutputLang = country === "jp" ? "ja" : "en";
   const personas =
     intFrom(flags.personas, "--personas") ??
     intFrom(env.WT_PERSONAS, "WT_PERSONAS") ??
@@ -133,7 +138,7 @@ export function resolveConfig(opts: {
     intFrom(flags.batch, "--batch") ?? intFrom(env.WT_BATCH, "WT_BATCH") ?? file.run?.batch ?? 5;
   if (batch > 64) throw new Error("--batch must be 64 or fewer");
   const outputLang = outputLangSchema.parse(
-    flags.outputLang ?? env.WT_OUTPUT_LANG ?? file.run?.output_lang ?? "ja",
+    flags.outputLang ?? env.WT_OUTPUT_LANG ?? file.run?.output_lang ?? derivedOutputLang,
   );
   const situation = situationSchema.parse(
     flags.situation ?? env.WT_SITUATION ?? file.run?.situation ?? DEFAULT_SITUATION,

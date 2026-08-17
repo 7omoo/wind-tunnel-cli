@@ -23,14 +23,20 @@ describe("resolveConfig", () => {
     const cfg = resolveConfig({});
     expect(cfg.profile).toBe("local");
     expect(cfg.run).toEqual({
-      country: "jp",
+      country: "usa",
       personas: 100,
       batch: 5,
-      outputLang: "ja",
+      outputLang: "en",
       situation: "sns_viral",
     });
     expect(cfg.models.bulk).toMatch(/^ollama:/);
     expect(cfg.ollamaHost).toBeUndefined();
+  });
+
+  it("derives the analysis language from the country unless set explicitly", () => {
+    expect(resolveConfig({ flags: { country: "jp" } }).run.outputLang).toBe("ja");
+    expect(resolveConfig({ flags: { country: "fr" } }).run.outputLang).toBe("en");
+    expect(resolveConfig({ flags: { country: "jp", outputLang: "en" } }).run.outputLang).toBe("en");
   });
 
   it("reads values from config.toml", () => {

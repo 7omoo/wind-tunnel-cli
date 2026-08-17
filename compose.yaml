@@ -2,7 +2,7 @@
 #
 #   docker compose up -d ollama
 #   docker compose run --rm ollama-pull        # fetch the default role models
-#   docker compose run --rm windtunnel personas pull jp
+#   docker compose run --rm windtunnel personas pull usa
 #   docker compose run --rm windtunnel run "draft copy..."
 #
 # On Apple Silicon, skip this file: containers cannot use the GPU. Run Ollama
