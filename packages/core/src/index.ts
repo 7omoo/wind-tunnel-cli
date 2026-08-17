@@ -54,9 +54,22 @@ export {
   type RunningModel,
 } from "./ollama/client";
 export { diagnoseOllama, type OllamaDoctorReport, type RoleCheck } from "./ollama/doctor";
+export {
+  type IngestProgress,
+  type IngestResult,
+  pullCountryPool,
+} from "./personas/ingest";
 export { createJsonPersonaSource, loadJsonPersonaSource } from "./personas/json-source";
 // Personas
 export { extractName } from "./personas/names";
+export {
+  defaultPoolPath,
+  openPersonaPool,
+  type PersonaPool,
+  type PoolInfo,
+  poolExists,
+} from "./personas/pool";
+export { COUNTRY_PRESETS, type CountryPreset } from "./personas/presets";
 export type { PersonaFilter, PersonaSource } from "./personas/source";
 
 // Pipeline stages

@@ -8,6 +8,9 @@ export default defineConfig({
   // Bundle the workspace package so the published artifact is self-contained;
   // regular dependencies stay external and install from the registry.
   noExternal: ["@wind-tunnel/core"],
+  // Native modules cannot be bundled — DuckDB ships per-platform prebuilt
+  // binaries and must stay a runtime dependency of this package.
+  external: ["@duckdb/node-api"],
   // The createRequire shim lets CJS transitive deps (bundled into this ESM
   // output) keep calling require() for node builtins — esbuild's __require
   // stub defers to a defined `require` instead of throwing.

@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.44",
+    "@duckdb/node-api": "1.5.5-r.4",
     "ai": "^7.0.66",
     "ai-sdk-ollama": "^4.1.0",
     "ml-kmeans": "^7.0.1",

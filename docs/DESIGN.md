@@ -174,17 +174,17 @@ not on Hugging Face and is not part of the CLI.
 ### Ingest
 
 `windtunnel personas pull <code>` queries the dataset directly with DuckDB
-(`@duckdb/node-api`) over the `hf://` protocol, projecting only the ~10 needed
-columns (the four long free-text persona variants are skipped), stratified-samples
-by region with a per-region cap, validates (region match rate, sex normalization),
-and writes into a local SQLite pool at the XDG data dir. Rationale: column
-projection cuts transfer to a fraction of the full download (Japan alone is
-1.73 GB), and the stratified-sampling SQL already exists and is proven.
-
-**Gate:** before building on it, verify that `hf://` + sampling actually avoids
-full-file transfer for these datasets. If it doesn't, fall back to a pure-JS
-parquet reader (hyparquet) with row-group reads. The ingest module is isolated
-behind one interface so the swap stays local.
+(`@duckdb/node-api`) over the `hf://` protocol, projecting only the ~12 needed
+columns (the long free-text persona variants are skipped), stratified-samples
+by region with a per-region cap, validates (region match rate against the known
+set for jp/usa, null checks), and swaps the result transactionally into a local
+**DuckDB pool file** (`<data>/wind-tunnel/personas.duckdb` — DuckDB rather than
+SQLite so ingest and sampling share one native dependency; runs open it
+read-only). The gate was verified by measurement (2026-08-17): rows are randomly
+distributed across the dataset's parquet files (per-file region shares match the
+whole-dataset shares), so the ingest reads files one at a time, takes only each
+region's remaining deficit, and stops as soon as every region is filled — the
+Japan preset fills from 1 of its 8 files in ~20 s instead of a 1.73 GB download.
 
 ### Custom datasets
 
@@ -218,7 +218,7 @@ public output format:
 
 ```
 <data>/wind-tunnel/
-  personas.db                  # SQLite pools
+  personas.duckdb              # persona pools (written by `personas pull`)
   runs/<run-id>/
     input.json                 # message, country, filters, model config, versions
     status.json                # live stage marker, timestamps, warnings, error
@@ -330,9 +330,10 @@ grounded-research toggles.
 - License (must land before first release)
 - Final tagline / one-line description
 - npm scope `@wind-tunnel` availability (only needed for the open-core split)
-- `hf://` partial-transfer verification (gate for §7; fallback path defined)
 - Default model choices need a local eval pass (Japanese quality at 8B/14B)
 - Windows support level (paths and Ollama detection are written portably, but untested)
+- Custom dataset TOML definitions (§7) — the JSON `--personas-file` path works
+  today; the TOML mapping layer is not built yet
 
 ## 14. Milestones
 

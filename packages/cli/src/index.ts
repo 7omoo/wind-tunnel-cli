@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import { runDoctor } from "./commands/doctor";
 import { initCommand } from "./commands/init";
+import { personasListCommand, personasPullCommand } from "./commands/personas";
 import { resumeCommand } from "./commands/resume";
 import { runCommand } from "./commands/run";
 
@@ -44,6 +45,24 @@ program
   .option("--host <url>", "Ollama base URL")
   .action(async (idOrPath, opts) => {
     process.exitCode = await resumeCommand(idOrPath, opts);
+  });
+
+const personas = program.command("personas").description("Manage the local persona pool");
+
+personas
+  .command("pull")
+  .description("Fetch a country preset from Hugging Face into the local pool")
+  .argument("<code>", "country code (jp, usa, in, br, fr, kr, vn, be)")
+  .option("--cap <n>", "per-region sampling cap (default: preset-specific)", int)
+  .action(async (code, opts) => {
+    process.exitCode = await personasPullCommand(code, opts);
+  });
+
+personas
+  .command("list")
+  .description("Show installed persona pools")
+  .action(async () => {
+    process.exitCode = await personasListCommand();
   });
 
 program

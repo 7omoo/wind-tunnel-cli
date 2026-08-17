@@ -4,14 +4,19 @@
 
 import {
   createPipelineModels,
+  dataRoot,
   defaultPersonaLang,
+  defaultPoolPath,
   diagnoseOllama,
   executeRun,
   loadJsonPersonaSource,
   type ModelRoles,
   newRunId,
+  openPersonaPool,
+  type PersonaPool,
   type PersonaSource,
   parseModelSpec,
+  poolExists,
   type RunInput,
   RunStore,
   runsRoot,
@@ -82,16 +87,28 @@ const NO_SOURCE: PersonaSource = {
 export async function runCommand(message: string, flags: RunFlags): Promise<number> {
   const stderr = process.stderr;
   const color = useColor(stderr);
+  let pool: PersonaPool | undefined;
   try {
     const topic = topicSchema.parse(message);
     const cfg = await loadConfig(flags);
 
-    if (!flags.personasFile) {
-      throw new Error(
-        "no persona pool configured — pass --personas-file <pool.json> (SQLite pools via `windtunnel personas pull` are coming)",
-      );
+    // Persona source: an explicit JSON pool wins; otherwise the local pool
+    // database written by `personas pull`.
+    let source: PersonaSource;
+    if (flags.personasFile) {
+      source = await loadJsonPersonaSource(flags.personasFile);
+    } else {
+      const poolPath = defaultPoolPath(dataRoot());
+      const pullHint = `windtunnel personas pull ${cfg.run.country}`;
+      if (!(await poolExists(poolPath))) {
+        throw new Error(`no persona pool installed — run: ${pullHint} (or pass --personas-file)`);
+      }
+      pool = await openPersonaPool(poolPath);
+      if ((await pool.poolVersion(cfg.run.country)).startsWith("none-")) {
+        throw new Error(`country "${cfg.run.country}" is not in the pool — run: ${pullHint}`);
+      }
+      source = pool;
     }
-    const source = await loadJsonPersonaSource(flags.personasFile);
 
     if (!(await preflightModels(cfg.models, cfg, stderr))) return 1;
 
@@ -124,6 +141,8 @@ export async function runCommand(message: string, flags: RunFlags): Promise<numb
   } catch (e) {
     stderr.write(`${paint("red", "✗", color)} ${e instanceof Error ? e.message : String(e)}\n`);
     return 1;
+  } finally {
+    pool?.close();
   }
 }
 
