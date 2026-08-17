@@ -132,9 +132,11 @@ score, and stance stages. Two things the CLI must surface because users cannot
 see them:
 
 - **Effective parallelism is `min(batch, OLLAMA_NUM_PARALLEL)`.** The daemon
-  default is low (typically 4, or 1 on constrained machines). `doctor` and `run`
-  read the daemon state and warn when the user's batch setting exceeds what the
-  daemon will actually do, including the exact `ollama serve` invocation to fix it.
+  default is low (typically 4, or 1 on constrained machines), and the HTTP API
+  does not expose the setting — so it cannot be read, only stated. `doctor`
+  prints the defaults and the exact `ollama serve` invocation to change them;
+  the run stage detects saturation empirically (batched requests completing in
+  lockstep groups) and warns.
 - **KV cache cost = slots x num_ctx.** Keeping react at 4096 is what allows
   high parallelism; the 32K stages run single-slot. The CLI never asks the daemon
   for a global context length.

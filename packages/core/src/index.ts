@@ -31,6 +31,29 @@ export {
   SITUATIONS,
   type SituationMeta,
 } from "./data/situations";
+// Models
+export { DEFAULT_MODEL_ROLES, type ModelRole, type ModelRoles } from "./models/defaults";
+export {
+  DEFAULT_OLLAMA_URL,
+  type ModelProvider,
+  type ParsedModelSpec,
+  type ProviderSettings,
+  parseModelSpec,
+  resolveModel,
+} from "./models/registry";
+export { DEFAULT_KEEP_ALIVE, type PipelineStage, STAGE_NUM_CTX } from "./models/stages";
+
+// Ollama daemon probes & diagnosis
+export {
+  getOllamaVersion,
+  type InstalledModel,
+  isModelInstalled,
+  listInstalledModels,
+  listRunningModels,
+  type RunningModel,
+} from "./ollama/client";
+export { diagnoseOllama, type OllamaDoctorReport, type RoleCheck } from "./ollama/doctor";
+
 // Personas
 export { extractName } from "./personas/names";
 // Prompts
