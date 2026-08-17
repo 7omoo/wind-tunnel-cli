@@ -11,15 +11,12 @@ the heat. A wind tunnel doesn't predict flight — it shows you the forces befor
 polish are in progress. See [docs/DESIGN.md](docs/DESIGN.md) for the
 architecture.
 
-## Usage (from a checkout)
+## Quickstart
 
 ```
 windtunnel doctor                  # check Ollama and the role models
 windtunnel personas pull jp        # stream a persona pool (Hugging Face -> local pool)
 windtunnel run "draft copy..."     # sample -> react -> analyze -> cluster -> suggest
-windtunnel resume <run-id>         # continue an interrupted run
-windtunnel personas list           # show installed pools
-windtunnel init                    # write config.toml interactively
 ```
 
 A pull is fast: the datasets' rows are randomly distributed across their
@@ -31,12 +28,127 @@ Runs fully local against [Ollama](https://ollama.com), or hybrid with a cloud mo
 the handful of analysis calls that benefit from a larger model. Results are written as
 plain JSON / JSONL / CSV, so they drop straight into pandas, R, or a spreadsheet.
 
+## Commands
+
+### `windtunnel run "<message>"`
+
+Runs the full pipeline and prints a live progress bar, then a summary
+(backlash index, voice split, triggers, opinion groups, rewrite suggestions).
+
+Audience selection:
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `--country <code>` | `jp` | persona pool: `jp` `usa` `in` `br` `fr` `kr` `vn` `be` (pull it first) |
+| `--personas <n>` | `100` | how many personas react (1–1000) |
+| `--region <name>` | nationwide | restrict to one region, e.g. `--region 関東地方`, `--region CA` |
+| `--age-min / --age-max <n>` | none | age range filter |
+| `--sex <M\|F>` | none | sex filter (normalized codes work for every country) |
+| `--personas-file <path>` | — | use a custom JSON pool instead of the pulled one |
+
+Framing:
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `--situation <id>` | `sns_viral` | where the personas are "speaking": `anon_board` (anonymous board, hottest), `sns_viral`, `news_comment`, `public_comment`, `real_sns` (real-name, measured), `consumer_survey` (neutral baseline) |
+| `--context <text>` | none | background text shown to every persona alongside the message |
+| `--output-lang <ja\|en>` | `ja` | language of the analysis output (reactions always come in the pool's language) |
+
+Execution:
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `--batch <n>` | `5` | requests in flight for the batched stages (capped by the daemon's `OLLAMA_NUM_PARALLEL`, default 4) |
+| `--profile <local\|hybrid>` | `local` | `hybrid` sends the ~4 analysis calls to Gemini (needs `GEMINI_API_KEY`) |
+| `--model-bulk / --model-analysis / --model-premium <spec>` | qwen3 8B/14B | override a role model, e.g. `ollama:llama3.3`, `gemini:gemini-2.5-flash` |
+| `--host <url>` | `http://localhost:11434` | Ollama daemon address |
+
+Examples:
+
+```
+windtunnel run "採用告知のドラフト…" --personas 200 --situation anon_board
+windtunnel run "Ad copy draft…" --country usa --region CA --age-min 18 --age-max 34
+windtunnel run "…" --profile hybrid --output-lang en
+```
+
+### `windtunnel personas`
+
+```
+windtunnel personas pull <code>      # fetch a country preset into the local pool
+windtunnel personas pull jp --cap 5000   # per-region sampling cap (default varies by country)
+windtunnel personas list             # installed pools with size and version
+```
+
+### `windtunnel resume <run-id>`
+
+Continues an interrupted run from its checkpoint. Reactions already generated
+are never redone; completed stages are skipped. Also accepts a path to a run
+directory.
+
+### `windtunnel doctor`
+
+Checks daemon reachability, whether the role models are installed (with the
+exact `ollama pull` commands when not), what is loaded right now, and how to
+raise daemon parallelism.
+
+### `windtunnel init`
+
+Interactive setup — writes `config.toml` so your defaults stick.
+
+## Configuration
+
+Settings resolve in this order: built-in defaults < `config.toml` < `WT_*`
+environment variables < command-line flags.
+
+`~/.config/wind-tunnel/config.toml` (see `windtunnel init`):
+
+```toml
+profile = "local"            # local | hybrid
+
+[model]
+bulk = "ollama:qwen3:8b"     # reactions & classification (~100+ calls)
+analysis = "ollama:qwen3:14b" # verdict, propositions, group profiles (~3 calls)
+premium = "ollama:qwen3:14b"  # rewrite suggestions (1 call)
+
+[run]
+country = "jp"
+personas = 100
+batch = 5
+output_lang = "ja"
+
+[ollama]
+host = "http://localhost:11434"
+```
+
+Environment variables: `WT_PROFILE`, `WT_MODEL_BULK`, `WT_MODEL_ANALYSIS`,
+`WT_MODEL_PREMIUM`, `WT_COUNTRY`, `WT_PERSONAS`, `WT_BATCH`, `WT_OUTPUT_LANG`,
+`WT_SITUATION`, `WT_OLLAMA_HOST` (or `OLLAMA_HOST`), `GEMINI_API_KEY`.
+
+## Run artifacts
+
+Every run writes plain files under `~/.local/share/wind-tunnel/runs/<run-id>/`
+(`$XDG_DATA_HOME` respected). This layout doubles as the resume checkpoint and
+the machine-readable output:
+
+| File | Contents |
+| --- | --- |
+| `input.json` | message, filters, models — everything needed to reproduce the run |
+| `personas.json` | the sampled personas |
+| `opinions.jsonl` | one reaction per line, appended as generated (`pandas.read_json(..., lines=True)`) |
+| `scores.json` | per-opinion sentiment scores (-100..+100 with reasons) |
+| `analyze.json` | verdict: backlash index, triggers, safe version |
+| `cluster.json` | propositions, vote-matrix clusters, consensus/division, minority report |
+| `suggest.json` | rewrite alternatives + common ground |
+| `result.csv` | flat export for spreadsheets / R / SPSS (UTF-8 BOM, Excel-safe) |
+| `status.json` | stage marker, timestamps, warnings |
+
 ## Persona data
 
 Country presets build on NVIDIA's
 [Nemotron-Personas datasets](https://huggingface.co/datasets?search=Nemotron-Personas)
 (CC BY 4.0): Japan, USA, India, Brazil, France, Korea, Vietnam, Belgium.
-Custom pools can be plugged in via a TOML dataset definition.
+Custom pools work today as JSON files via `--personas-file`; a TOML dataset
+definition (map any CSV/parquet source) is planned.
 
 ## Docker
 
@@ -64,6 +176,8 @@ pnpm test          # unit suites; Ollama-dependent tests skip without a daemon
 pnpm build         # bundles the CLI into packages/cli/dist
 node packages/cli/dist/index.js doctor
 ```
+
+To use the checkout as the `windtunnel` command: `cd packages/cli && npm link`.
 
 Integration tests run automatically when a local Ollama daemon with
 `qwen3:0.6b` is present. The live Hugging Face ingest test is opt-in:
