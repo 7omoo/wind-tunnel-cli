@@ -41,9 +41,9 @@ export function renderSummary(
   data: SummaryData,
   stream: NodeJS.WriteStream = process.stdout,
 ): string {
-  // Follow the terminal, but cap the measure: beyond ~100 columns (≈50 CJK
-  // characters) prose lines get hard to scan.
-  const WIDTH = Math.max(56, Math.min((stream.columns ?? 78) - 2, 100));
+  // Follow the terminal width (user decision 2026-08-17: no readability cap —
+  // the terminal's own width is the measure).
+  const WIDTH = Math.max(56, (stream.columns ?? 78) - 2);
   const color = useColor(stream);
   const c = (style: Parameters<typeof paint>[0], text: string) => paint(style, text, color);
   const lines: string[] = [];
