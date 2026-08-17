@@ -33,6 +33,7 @@ export {
 } from "./data/situations";
 // Models
 export { DEFAULT_MODEL_ROLES, type ModelRole, type ModelRoles } from "./models/defaults";
+export { createPipelineModels, type PipelineModels } from "./models/pipeline";
 export {
   DEFAULT_OLLAMA_URL,
   type ModelProvider,
@@ -53,9 +54,19 @@ export {
   type RunningModel,
 } from "./ollama/client";
 export { diagnoseOllama, type OllamaDoctorReport, type RoleCheck } from "./ollama/doctor";
-
+export { createJsonPersonaSource, loadJsonPersonaSource } from "./personas/json-source";
 // Personas
 export { extractName } from "./personas/names";
+export type { PersonaFilter, PersonaSource } from "./personas/source";
+
+// Pipeline stages
+export { analyzeVerdict, SCORE_BATCH_SIZE, scoreOpinions } from "./pipeline/analyze";
+export { chunk, mapWaves } from "./pipeline/batch";
+export { clusterOpinions } from "./pipeline/cluster";
+export { STANCE_BATCH_SIZE } from "./pipeline/cluster-stages";
+export { type ReactOptions, type ReactSummary, reactPersonas } from "./pipeline/react";
+export { type ScoredOpinion, stratifiedSample } from "./pipeline/sample";
+export { suggestAlternatives } from "./pipeline/suggest";
 // Prompts
 export {
   buildContextBlock,
@@ -64,6 +75,22 @@ export {
   getSystemExtra,
 } from "./prompts/persona";
 export { getSituationFraming, lengthClause } from "./prompts/situation";
+// Run store & executor
+export { type ExecuteDeps, executeRun } from "./run/execute";
+export { configRoot, dataRoot, newRunId, runsRoot } from "./run/paths";
+export { RunStore } from "./run/store";
+export type {
+  AnalyzeArtifact,
+  ClusterArtifact,
+  PersonasArtifact,
+  RunInput,
+  RunProgressEvent,
+  RunStageName,
+  RunStatus,
+  RunSummary,
+  ScoresArtifact,
+  SuggestArtifact,
+} from "./run/types";
 // Schemas & enums
 export {
   alternativeSuggestionSchema,

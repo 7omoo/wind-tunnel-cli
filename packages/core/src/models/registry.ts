@@ -71,6 +71,11 @@ export type ResolveModelOptions = {
   // Pipeline stage; selects the num_ctx budget for Ollama models (STAGE_NUM_CTX).
   // Ignored for cloud providers, which manage context server-side.
   stage?: PipelineStage;
+  // Thinking-mode control for Ollama models. Only pass a value for models whose
+  // /api/show capabilities include "thinking" — the daemon rejects the parameter
+  // on models that don't support it. createPipelineModels handles the detection;
+  // the pipeline runs with thinking off for throughput.
+  think?: boolean;
 };
 
 export function resolveModel(
@@ -83,6 +88,7 @@ export function resolveModel(
     const baseUrl = settings.ollamaBaseUrl ?? DEFAULT_OLLAMA_URL;
     return ollamaProvider(baseUrl)(parsed.name, {
       keep_alive: DEFAULT_KEEP_ALIVE,
+      ...(opts.think !== undefined ? { think: opts.think } : {}),
       ...(opts.stage ? { options: { num_ctx: STAGE_NUM_CTX[opts.stage] } } : {}),
     });
   }

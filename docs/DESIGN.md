@@ -221,6 +221,7 @@ public output format:
   personas.db                  # SQLite pools
   runs/<run-id>/
     input.json                 # message, country, filters, model config, versions
+    status.json                # live stage marker, timestamps, warnings, error
     personas.json              # the sampled personas
     opinions.jsonl             # one reaction per line, appended as generated
     scores.json                # per-opinion sentiment scores
@@ -229,6 +230,12 @@ public output format:
     suggest.json               # alternatives + common ground
     result.csv                 # flat export for spreadsheets / pandas / R
 ```
+
+A stage artifact containing `null` means the stage completed without a usable
+result (non-fatal degradation: cluster/suggest); an absent file means the stage
+has not run yet — resume walks exactly that distinction. JSON artifacts are
+written atomically (tmp + rename) so a crash can't leave a truncated file that
+looks like a completed stage.
 
 Every JSON artifact carries `schemaVersion`. This layout is the API: downstream
 consumers (`pandas.read_json(..., lines=True)`, R, jq) read files, not a library.

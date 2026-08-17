@@ -93,3 +93,27 @@ export async function listRunningModels(baseUrl = DEFAULT_OLLAMA_URL): Promise<R
 export function isModelInstalled(installed: InstalledModel[], name: string): boolean {
   return installed.some((m) => m.name === name || m.name === `${name}:latest`);
 }
+
+// POST /api/show — model capabilities ("completion", "tools", "thinking", ...).
+// null when the daemon is unreachable or the model is unknown. Used to decide
+// whether the `think` parameter may be sent (rejected by non-thinking models).
+export async function getModelCapabilities(
+  name: string,
+  baseUrl = DEFAULT_OLLAMA_URL,
+): Promise<string[] | null> {
+  try {
+    const res = await fetch(url(baseUrl, "/api/show"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: name }),
+      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as { capabilities?: unknown };
+    return Array.isArray(body.capabilities)
+      ? body.capabilities.filter((c): c is string => typeof c === "string")
+      : null;
+  } catch {
+    return null;
+  }
+}
