@@ -20,6 +20,7 @@ RUN pnpm build
 # (the workspace core package is compiled into the bundle).
 RUN mkdir /out \
   && cp -r packages/cli/dist /out/dist \
+  && cp LICENSE NOTICE THIRD_PARTY_LICENSES.md /out/ \
   && node -e "const p=require('./packages/cli/package.json'); delete p.devDependencies; delete p.scripts; require('fs').writeFileSync('/out/package.json', JSON.stringify(p, null, 2))" \
   && cd /out && npm install --omit=dev --no-audit --no-fund
 

@@ -73,4 +73,8 @@ Release process: [docs/RELEASE.md](docs/RELEASE.md).
 
 ## License
 
-TBD — will be settled before the first release.
+[Apache-2.0](LICENSE). Bundled third-party code is listed with its license
+texts in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) (all permissive:
+Apache-2.0 / MIT / ISC / BSD-3-Clause). The Nemotron-Personas datasets are
+CC BY 4.0 and are fetched by users directly from Hugging Face, not
+redistributed here.

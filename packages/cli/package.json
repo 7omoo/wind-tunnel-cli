@@ -7,8 +7,12 @@
   "bin": {
     "windtunnel": "./dist/index.js"
   },
+  "license": "Apache-2.0",
   "files": [
-    "dist"
+    "dist",
+    "LICENSE",
+    "NOTICE",
+    "THIRD_PARTY_LICENSES.md"
   ],
   "engines": {
     "node": ">=20"
@@ -34,7 +38,8 @@
   "author": "7omo",
   "scripts": {
     "build": "tsup",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepack": "cp ../../LICENSE ../../NOTICE ../../THIRD_PARTY_LICENSES.md ."
   },
   "dependencies": {
     "@duckdb/node-api": "1.5.5-r.4",

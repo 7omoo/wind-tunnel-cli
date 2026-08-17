@@ -9,10 +9,12 @@ remove it only as part of executing this checklist.
 
 ## Blockers (decide before the first release)
 
-1. **License.** Choose and add `LICENSE`, set the `license` field in
-   `packages/cli/package.json` and `packages/core/package.json`, and update the
-   README's License section. All runtime dependencies are permissive
-   (Apache-2.0 / MIT / BSD); no copyleft constraints force a choice.
+1. ~~License.~~ **Resolved 2026-08-17: Apache-2.0.** `LICENSE` (canonical
+   text), `NOTICE`, and `THIRD_PARTY_LICENSES.md` are in place; both package
+   manifests carry the `license` field. The dependency audit found only
+   permissive licenses (bundled: Apache-2.0 ×7, MIT ×14, ISC ×1; runtime:
+   MIT ×5, BSD-3-Clause ×1 — zero copyleft). Regenerate the third-party file
+   after dependency changes: `node scripts/generate-third-party-notices.mjs`.
 2. **Tagline.** Final one-line description (package.json `description`, README
    intro, GitHub repo description).
 

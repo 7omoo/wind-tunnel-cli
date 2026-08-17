@@ -2,6 +2,7 @@
   "name": "@wind-tunnel/core",
   "version": "0.1.0",
   "private": true,
+  "license": "Apache-2.0",
   "description": "Persona reaction pipeline: filter, react, analyze, cluster, suggest",
   "type": "module",
   "exports": {

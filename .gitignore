@@ -5,6 +5,11 @@ node_modules/
 dist/
 *.tsbuildinfo
 
+# prepack copies (canonical files live at the repo root)
+packages/cli/LICENSE
+packages/cli/NOTICE
+packages/cli/THIRD_PARTY_LICENSES.md
+
 # test
 coverage/
 
