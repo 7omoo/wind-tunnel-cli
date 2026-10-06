@@ -103,6 +103,36 @@ describe("clusterOpinions", () => {
     expect(clusterOf.get("pro0")).not.toBe(clusterOf.get("con0"));
   });
 
+  it("names PC1 from the proposition that actually drives it", async () => {
+    // Only 命題C splits the camps; 命題A and 命題B get one stray vote each.
+    // The driving proposition is deliberately not the first: with variance on
+    // 命題A, a transposed read of the loadings hits the same cell and passes.
+    let axisPrompt = "";
+    const model = textModel((prompt) => {
+      if (prompt.includes("Return votes as one row per opinion")) {
+        const rows = [...prompt.matchAll(/^Opinion \d+: "(.+)"$/gm)].map((m) => {
+          const text = m[1] ?? "";
+          const i = Number(text.match(/\d+$/)?.[0]);
+          const camp = text.startsWith("賛成") ? 1 : -1;
+          return [camp === 1 && i === 1 ? 1 : 0, camp === -1 && i === 2 ? 1 : 0, camp];
+        });
+        return JSON.stringify({ votes: rows });
+      }
+      if (prompt.includes("principal component axes")) axisPrompt = prompt;
+      return clusterResponse(prompt);
+    });
+    await clusterOpinions({
+      topic: "テーマ",
+      opinions: OPINIONS,
+      propositionSample: OPINIONS,
+      outputLang: "ja",
+      models: models(model),
+      concurrency: 2,
+    });
+    const pc1Top = axisPrompt.match(/PC1 top contributing propositions:\n"([^"]+)"/)?.[1];
+    expect(pc1Top).toBe("命題C");
+  });
+
   it("collapses to a single group when the corpus is unanimous (honesty rule)", async () => {
     // Every opinion votes identically -> silhouette carries no structure ->
     // the fabricated k>=2 split must collapse instead of showing twin camps.
