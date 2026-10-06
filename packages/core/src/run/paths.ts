@@ -1,6 +1,7 @@
 // Filesystem locations. XDG base dirs on every platform (macOS included) —
 // predictable, greppable, documented in docs/DESIGN.md §8.
 
+import { randomInt } from "node:crypto";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -24,6 +25,10 @@ export function configRoot(): string {
 export function newRunId(now = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-  const rand = Math.random().toString(36).slice(2, 6).padEnd(4, "0");
+  // Uniform over [a-z0-9]^4. (Math.random().toString(36) can come back short
+  // and was zero-padded, shrinking the space.) RunStore.create still refuses
+  // an existing directory, so a same-second collision cannot clobber a run.
+  const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
+  const rand = Array.from({ length: 4 }, () => alphabet[randomInt(alphabet.length)]).join("");
   return `${stamp}-${rand}`;
 }

@@ -63,6 +63,22 @@ describe("RunStore", () => {
     expect(status?.completedAt).toBeNull();
   });
 
+  it("refuses to create over an existing run instead of clobbering it", async () => {
+    const first = await RunStore.create(root, input("same-id"));
+    await first.patchStatus({ stage: "react" });
+    await expect(RunStore.create(root, { ...input("same-id"), topic: "別の投稿" })).rejects.toThrow(
+      /already exists/,
+    );
+    // The earlier run is untouched.
+    expect((await first.readInput()).topic).toBe("テスト投稿");
+    expect((await first.readStatus())?.stage).toBe("react");
+  });
+
+  it("creates the runs root on first use", async () => {
+    const store = await RunStore.create(join(root, "nested", "runs"), input("r0"));
+    expect((await store.readInput()).runId).toBe("r0");
+  });
+
   it("reopens an existing directory and rejects a non-run directory", async () => {
     const store = await RunStore.create(root, input("r2"));
     const reopened = await RunStore.open(store.dir);

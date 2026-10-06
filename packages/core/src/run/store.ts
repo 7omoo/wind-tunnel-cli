@@ -34,7 +34,17 @@ export class RunStore {
 
   static async create(root: string, input: RunInput, now = new Date()): Promise<RunStore> {
     const dir = join(root, input.runId);
-    await mkdir(dir, { recursive: true });
+    await mkdir(root, { recursive: true });
+    // Non-recursive on purpose: an existing directory is another run, and a
+    // recursive mkdir would silently reuse it and overwrite its input/status.
+    try {
+      await mkdir(dir);
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === "EEXIST") {
+        throw new Error(`run directory already exists: ${dir}`);
+      }
+      throw e;
+    }
     const store = new RunStore(dir);
     await store.writeJson(FILES.input, input);
     const status: RunStatus = {
