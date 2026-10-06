@@ -193,6 +193,8 @@ export async function executeAndRender(
     ...(cfg.geminiApiKey ? { geminiApiKey: cfg.geminiApiKey } : {}),
   });
 
+  const providers = Object.values(input.models).map((spec) => parseModelSpec(spec).provider);
+
   const renderer = createProgressRenderer(stderr);
   const started = Date.now();
 
@@ -234,7 +236,7 @@ export async function executeAndRender(
     return 0;
   } catch (e) {
     renderer.finish();
-    renderError(e, stderr, { resumeId: input.runId });
+    renderError(e, stderr, { resumeId: input.runId, providers });
     return 1;
   } finally {
     process.off("SIGINT", onSigint);

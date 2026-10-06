@@ -6,7 +6,7 @@
 // Curated errors thrown by our own code embed their remedy after an em-dash
 // ("no persona pool installed — run: …") and pass through untouched.
 
-import { CuratedError } from "@wind-tunnel/core";
+import { CuratedError, type ModelProvider } from "@wind-tunnel/core";
 import { paint, useColor } from "./render/format";
 
 const ISSUES_URL = "https://github.com/7omoo/wind-tunnel-cli/issues";
@@ -26,6 +26,40 @@ export type ClassifiedError = {
   headline: string;
   hints: string[];
 };
+
+// What the error happened under. providers = the run's model providers; when
+// unknown (errors outside a run) the default provider, Ollama, is assumed.
+export type ErrorContext = { providers?: readonly ModelProvider[] };
+
+// How to unstick each local model server after a timeout. Gemini has no
+// server to restart; the resume hint is all there is.
+const STUCK_SERVER_HINTS = {
+  ollama: {
+    name: "Ollama",
+    hints: ["restart the daemon: brew services restart ollama (or restart the Ollama app)"],
+  },
+  lmstudio: {
+    name: "LM Studio",
+    hints: [
+      "check what's loaded: lms ps",
+      "restart the server: lms server stop && lms server start (or restart the LM Studio app)",
+    ],
+  },
+} as const;
+
+function timeoutError(providers: readonly ModelProvider[]): ClassifiedError {
+  const servers = (["ollama", "lmstudio"] as const)
+    .filter((p) => providers.includes(p))
+    .map((p) => STUCK_SERVER_HINTS[p]);
+  if (servers.length === 0) {
+    return { kind: "timeout", headline: "an LLM call timed out", hints: [] };
+  }
+  return {
+    kind: "timeout",
+    headline: `an LLM call timed out — ${servers.map((s) => s.name).join(" or ")} looks stuck (often a wedged model load)`,
+    hints: ["check what's loaded: wt-cli doctor", ...servers.flatMap((s) => s.hints)],
+  };
+}
 
 // Flatten an error and its cause chain (plus AggregateError members) into one
 // searchable text, keeping the top-level message for display.
@@ -47,7 +81,7 @@ function collectText(e: unknown, depth = 0): string {
   return parts.join(" | ");
 }
 
-export function classifyError(e: unknown): ClassifiedError {
+export function classifyError(e: unknown, context: ErrorContext = {}): ClassifiedError {
   const message = e instanceof Error ? e.message : String(e);
   const text = collectText(e);
 
@@ -69,14 +103,7 @@ export function classifyError(e: unknown): ClassifiedError {
   }
 
   if (/TimeoutError|operation was aborted|timed out/i.test(text)) {
-    return {
-      kind: "timeout",
-      headline: "an LLM call timed out — Ollama looks stuck (often a wedged model load)",
-      hints: [
-        "check what's loaded: wt-cli doctor",
-        "restart the daemon: brew services restart ollama (or restart the Ollama app)",
-      ],
-    };
+    return timeoutError(context.providers ?? ["ollama"]);
   }
 
   if (
@@ -115,11 +142,11 @@ export function classifyError(e: unknown): ClassifiedError {
 export function renderError(
   e: unknown,
   stream: NodeJS.WriteStream = process.stderr,
-  opts: { resumeId?: string } = {},
+  opts: { resumeId?: string } & ErrorContext = {},
 ): void {
   const color = useColor(stream);
   const c = (style: Parameters<typeof paint>[0], text: string) => paint(style, text, color);
-  const classified = classifyError(e);
+  const classified = classifyError(e, opts);
 
   stream.write(`${c("red", "✗")} ${classified.headline}\n`);
   for (const hint of classified.hints) {
