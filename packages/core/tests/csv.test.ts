@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Opinion } from "../src/types";
-import { opinionsToCsv, safeFilename } from "../src/util/csv";
+import { opinionsToCsv } from "../src/util/csv";
 
 function opinion(overrides: Partial<Opinion> = {}): Opinion {
   return {
@@ -46,17 +46,5 @@ describe("opinionsToCsv", () => {
     // corrupt the value for pandas/R/SPSS, the primary consumers of this file.
     const csv = opinionsToCsv([opinion({ text: "=SUM(A1:A9)" })]);
     expect(csv).toContain(",=SUM(A1:A9)");
-  });
-});
-
-describe("safeFilename", () => {
-  it("reduces non-ASCII and specials to single dashes and caps the stem at 60", () => {
-    expect(safeFilename("炎上リスク: 夏のキャンペーン!!", "csv")).toBe("-.csv");
-    expect(safeFilename("Summer  Campaign / v2", "csv")).toBe("Summer-Campaign-v2.csv");
-    expect(safeFilename("x".repeat(80), "csv")).toBe(`${"x".repeat(60)}.csv`);
-  });
-
-  it("falls back to 'export' when nothing survives", () => {
-    expect(safeFilename("", "csv")).toBe("export.csv");
   });
 });

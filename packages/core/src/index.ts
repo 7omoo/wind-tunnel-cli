@@ -145,6 +145,6 @@ export type {
 } from "./types";
 
 // Utilities
-export { opinionsToCsv, safeFilename } from "./util/csv";
+export { opinionsToCsv } from "./util/csv";
 export { clampPromptInput, escapeForPrompt, quoteUntrusted } from "./util/sanitize";
 export { shuffle } from "./util/shuffle";
