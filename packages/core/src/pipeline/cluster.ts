@@ -13,7 +13,7 @@ import {
   silhouette,
 } from "../analysis/clustering";
 import type { Opinion, OpinionClusterResult, OutputLang } from "../types";
-import { sanitizePromptInput } from "../util/sanitize";
+import { clampPromptInput } from "../util/sanitize";
 import {
   classifyStances,
   extractPropositions,
@@ -51,7 +51,7 @@ export async function clusterOpinions(
   if (opinions.length < 3) {
     throw new Error(`not enough opinions to cluster (${opinions.length} < 3)`);
   }
-  const topic = sanitizePromptInput(opts.topic);
+  const topic = clampPromptInput(opts.topic);
   const warnings: string[] = [];
 
   // Phase 1: propositions (from the sample).

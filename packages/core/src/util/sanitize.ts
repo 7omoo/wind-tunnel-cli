@@ -1,27 +1,24 @@
-// Sanitize user input before embedding it in LLM prompts.
-// Strips common prompt-injection patterns while preserving legitimate content.
-// maxLen is the final truncation cap (topic default 5000; supplemental context
-// passes CONTEXT_MAX_CHARS instead).
-export function sanitizePromptInput(input: string, maxLen = 5000): string {
-  let sanitized = input;
-  // Normalize Unicode lookalikes (Cyrillic S, A, etc.) that bypass \b word boundaries
-  sanitized = sanitized.normalize("NFKC");
-  // Remove zero-width and invisible format characters used to split filter keywords
-  sanitized = sanitized.replace(/[\u200B-\u200F\u2028-\u202F\uFEFF]/g, "");
-  // Remove system/assistant role injection attempts (case-insensitive, no \b for CJK compat)
-  sanitized = sanitized.replace(/(^|\s)(system|assistant|user|human)\s*:/gim, "$1");
-  // Remove instruction override attempts — expanded synonym coverage
-  sanitized = sanitized.replace(
-    /(ignore|disregard|forget|override|bypass|skip)\s+(all\s+)?(previous|above|prior|earlier|existing|current)\s+(instructions?|prompts?|rules?|context)/gi,
-    "[filtered]",
-  );
-  sanitized = sanitized.replace(/new\s+instructions?\s*:/gi, "[filtered]");
-  sanitized = sanitized.replace(/IMPORTANT\s*:/gi, "[filtered]");
-  // Remove attempts to close/reopen prompt blocks
-  sanitized = sanitized.replace(/```/g, "");
-  sanitized = sanitized.replace(/~~~/g, "");
-  // Trim excessive length
-  return sanitized.slice(0, maxLen).trim();
+// Preparing text for LLM prompts.
+//
+// User-supplied text (the post under test, optional background) is embedded
+// verbatim. This is a message-testing tool: rewriting the copy — even phrases
+// like "IMPORTANT:" or "our assistant:" that look like injections — would make
+// every persona react to text the user never wrote. The defense is structural
+// instead: callers clamp the length and wrap the text in a tagged block
+// (quoteUntrusted) that the prompt declares to be material, not instructions.
+
+// Trims and caps user text. maxLen defaults to the topic cap; supplemental
+// context passes CONTEXT_MAX_CHARS.
+export function clampPromptInput(input: string, maxLen = 5000): string {
+  return input.trim().slice(0, maxLen).trim();
+}
+
+// Wraps text in <tag>…</tag>. The only way out of the block is a literal
+// closing tag inside the text, so that alone is defused; nothing else changes.
+// `tag` is an internal constant (letters only), never user input.
+export function quoteUntrusted(tag: string, text: string): string {
+  const closing = new RegExp(`</\\s*${tag}\\s*>`, "gi");
+  return `<${tag}>\n${text.replace(closing, `<\\/${tag}>`)}\n</${tag}>`;
 }
 
 // Escape LLM-generated text before re-embedding it in subsequent prompts.

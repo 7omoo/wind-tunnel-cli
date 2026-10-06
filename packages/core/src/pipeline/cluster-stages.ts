@@ -6,6 +6,7 @@
 import { generateText, type LanguageModel, Output } from "ai";
 import { z } from "zod";
 import { stageTimeoutSignal } from "../models/stages";
+import { postContentBlock } from "../prompts/post";
 import { outputLangName } from "../schemas";
 import type {
   Opinion,
@@ -42,7 +43,7 @@ export async function extractPropositions(opts: {
     system: `You are an expert in public opinion analysis. Extract specific propositions that can be voted on as agree/disagree from multiple opinions. Output the propositions in ${lang}.`,
     prompt: `Extract 10-15 specific propositions that can be answered with agree/disagree/neutral from the following ${opts.opinions.length} opinions.
 
-Topic: ${opts.topic}
+${postContentBlock(opts.topic, false)}
 
 Opinions:
 ${opinionsText}
