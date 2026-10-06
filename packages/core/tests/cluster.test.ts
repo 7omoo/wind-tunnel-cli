@@ -81,6 +81,8 @@ describe("clusterOpinions", () => {
     expect(new Set(assigned).size).toBe(OPINIONS.length);
     expect(result.plotData).toHaveLength(OPINIONS.length);
     expect(result.divisive.length).toBeGreaterThan(0);
+    // The two camps vote opposite on every proposition: nothing is consensus.
+    expect(result.consensus).toEqual([]);
     expect(result.xAxisLabel).toBe("賛成 ←→ 反対");
     expect(result.axes?.[0]?.variancePct).toBeGreaterThan(0);
     expect(result.groupProfiles?.length).toBe(result.clusters.length);
@@ -151,6 +153,9 @@ describe("clusterOpinions", () => {
     expect(result.minorityReport).toBeNull();
     expect(result.divisive).toEqual([]);
     expect(result.bridging).toBeUndefined();
+    // One group: consensus is that group's own support. Everyone agrees with
+    // 命題A and 命題B ((1+8)/(2+8) = 0.9) and rejects 命題C (0.1).
+    expect(result.consensus.map((c) => c.text)).toEqual(["命題A", "命題B"]);
   });
 
   it("is reproducible: identical input yields identical clusters", async () => {

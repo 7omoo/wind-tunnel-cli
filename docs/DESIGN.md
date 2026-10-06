@@ -65,6 +65,11 @@ k>=2 split collapses to a single group — a unanimous crowd is reported as one
 camp instead of two factions with identical beliefs. Division and bridging are
 between-group measures and are skipped in that case.
 
+A proposition counts as consensus only when every group's agree rate is at
+least 0.6 (with one group, that group alone) — the hosted app's definition.
+Ranking by the product of the rates alone would let a proposition two groups
+reject still head the list; when nothing clears the bar, consensus is empty.
+
 Stages run strictly in sequence (verdict, then cluster, then suggest); only the
 work inside a stage is batched. Stage 2 emits opinions through an async generator; the CLI
 consumes it for progress display and appends each opinion to the run's JSONL

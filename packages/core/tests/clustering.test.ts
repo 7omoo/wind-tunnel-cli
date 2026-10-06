@@ -6,6 +6,7 @@ import {
   detectConsensus,
   detectDivision,
   findMinorityDivergence,
+  isConsensus,
   partitionVotes,
   silhouette,
   topPropositionsByAxis,
@@ -81,6 +82,49 @@ describe("detectConsensus", () => {
     // label 0 (two disagree): 1/4; label 1 (one agrees): 2/3
     expect(p1?.groupSupport[0]).toBeCloseTo(0.25);
     expect(p1?.groupSupport[1]).toBeCloseTo(2 / 3);
+  });
+});
+
+describe("isConsensus", () => {
+  const support = (...groupSupport: number[]) => ({ groupSupport });
+
+  it("rejects a proposition the groups split on, however high its product ranks", () => {
+    // Five groups of 30, agreeing 30 / 2 / 30 / 12 / 2: smoothed support
+    // ~0.97 / 0.09 / 0.97 / 0.41 / 0.09 (the 2026-10-06 run that ranked such a
+    // proposition first under "consensus").
+    const agrees = [30, 2, 30, 12, 2];
+    const votes: number[][] = [];
+    const labels: number[] = [];
+    agrees.forEach((n, g) => {
+      for (let i = 0; i < 30; i++) {
+        votes.push([i < n ? 1 : -1]);
+        labels.push(g);
+      }
+    });
+    const [split] = detectConsensus(votes, labels, [{ id: "p1", text: "A" }]);
+    expect(split?.groupSupport.map((p) => Math.round(p * 100) / 100)).toEqual([
+      0.97, 0.09, 0.97, 0.41, 0.09,
+    ]);
+    expect(split && isConsensus(split)).toBe(false);
+  });
+
+  it("accepts a proposition only when every group supports it at 0.6 or more", () => {
+    expect(isConsensus(support(0.9, 0.75, 0.6))).toBe(true);
+    expect(isConsensus(support(0.9, 0.75, 0.59))).toBe(false);
+  });
+
+  it("treats exactly 0.6 as consensus (inclusive bound)", () => {
+    expect(isConsensus(support(0.6, 0.6))).toBe(true);
+  });
+
+  it("judges a single group by that group's support alone", () => {
+    // The silhouette honesty rule can collapse the crowd to one group.
+    expect(isConsensus(support(0.9))).toBe(true);
+    expect(isConsensus(support(0.4))).toBe(false);
+  });
+
+  it("is never consensus without any group support", () => {
+    expect(isConsensus(support())).toBe(false);
   });
 });
 

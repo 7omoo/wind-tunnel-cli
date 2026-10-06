@@ -10,6 +10,7 @@ import {
   computeBridging,
   detectConsensus,
   detectDivision,
+  isConsensus,
   partitionVotes,
   TOP_PROPOSITIONS,
 } from "../analysis/clustering";
@@ -138,7 +139,7 @@ export async function clusterOpinions(
     propositions,
     clusters,
     plotData,
-    consensus: consensus.slice(0, TOP_PROPOSITIONS),
+    consensus: consensus.filter(isConsensus).slice(0, TOP_PROPOSITIONS),
     divisive: divisive.slice(0, TOP_PROPOSITIONS),
     xAxisLabel: axes[0]?.label ?? "PC1",
     yAxisLabel: axes[1]?.label ?? "PC2",
