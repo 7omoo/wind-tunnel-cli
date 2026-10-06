@@ -12,6 +12,7 @@ import type {
  * Silhouette coefficient (for choosing k in k-means).
  * For each point: a = mean intra-cluster distance, b = mean distance to the
  * nearest other cluster; score = (b - a) / max(a, b), averaged over all points.
+ * Points in singleton clusters score 0.
  */
 export function silhouette(data: number[][], labels: number[]): number {
   const n = data.length;
@@ -49,7 +50,11 @@ export function silhouette(data: number[][], labels: number[]): number {
         sameCount++;
       }
     }
-    const a = sameCount > 0 ? sameSum / sameCount : 0;
+    // A point alone in its cluster has no a(i); by convention (Rousseeuw 1987)
+    // s(i) = 0. Letting a = 0 here would score it a perfect 1 and make a stray
+    // singleton look like real structure.
+    if (sameCount === 0) continue;
+    const a = sameSum / sameCount;
 
     // b(i) = min average distance to other clusters
     let b = Infinity;
