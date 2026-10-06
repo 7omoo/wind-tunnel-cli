@@ -5,6 +5,7 @@
 
 import { generateText, type LanguageModel, Output } from "ai";
 import { z } from "zod";
+import { findMinorityDivergence } from "../analysis/clustering";
 import { ANALYSIS_TEMPERATURE, stageTimeoutSignal } from "../models/stages";
 import { postContentBlock } from "../prompts/post";
 import { outputLangName } from "../schemas";
@@ -216,30 +217,11 @@ export async function generateGroupProfilesAndMinority(opts: {
 
   // Minority divergence is computed numerically before the call; the model only
   // interprets it (never re-derives the numbers).
-  const hasMinority = clusters.length >= 2;
-  const minCluster = hasMinority
-    ? clusters.reduce((min, c) => (c.size < min.size ? c : min))
-    : null;
+  const minority = findMinorityDivergence(clusters, propositions);
+  const hasMinority = minority !== null;
+  const minCluster = minority?.cluster ?? null;
+  const divergences = minority?.divergences ?? [];
   const totalSize = clusters.reduce((sum, c) => sum + c.size, 0);
-  const divergences =
-    hasMinority && minCluster
-      ? (() => {
-          const overallCentroid = propositions.map((_, j) => {
-            const sum = clusters.reduce((acc, c) => acc + (c.centroid[j] ?? 0) * c.size, 0);
-            return totalSize > 0 ? sum / totalSize : 0;
-          });
-          return propositions
-            .map((p, j) => ({
-              propositionId: p.id,
-              text: p.text,
-              minorityStance: minCluster.centroid[j] ?? 0,
-              overallStance: overallCentroid[j] ?? 0,
-              diff: Math.abs((minCluster.centroid[j] ?? 0) - (overallCentroid[j] ?? 0)),
-            }))
-            .sort((a, b) => b.diff - a.diff)
-            .slice(0, 5);
-        })()
-      : [];
 
   const minIndex = minCluster ? clusters.findIndex((c) => c.id === minCluster.id) : -1;
   const divergenceText = divergences
@@ -327,12 +309,7 @@ Return exactly ${clusters.length} group profiles, in the SAME ORDER as the group
       totalSize,
       narrative: m?.narrative ?? "",
       blindSpots: m?.blindSpots ?? [],
-      topDivergences: divergences.map((d) => ({
-        propositionId: d.propositionId,
-        text: d.text,
-        minorityStance: d.minorityStance,
-        overallStance: d.overallStance,
-      })),
+      topDivergences: divergences,
     };
   }
 

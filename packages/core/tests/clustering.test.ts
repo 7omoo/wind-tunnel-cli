@@ -3,6 +3,7 @@ import {
   computeBridging,
   detectConsensus,
   detectDivision,
+  findMinorityDivergence,
   silhouette,
 } from "../src/analysis/clustering";
 
@@ -126,5 +127,53 @@ describe("computeBridging", () => {
     expect(result).toHaveLength(5);
     expect(result.every((b) => b.bridgingScore === 1)).toBe(true);
     expect(result.map((b) => b.propositionId)).not.toContain("p7");
+  });
+});
+
+describe("findMinorityDivergence", () => {
+  const props = [
+    { id: "p1", text: "A" },
+    { id: "p2", text: "B" },
+  ];
+  const cluster = (id: number, size: number, centroid: number[]) => ({
+    id,
+    size,
+    centroid,
+    memberIds: [],
+  });
+
+  it("is null without at least two clusters", () => {
+    expect(findMinorityDivergence([cluster(0, 5, [1, 0])], props)).toBeNull();
+  });
+
+  it("picks the smallest cluster and ranks propositions by distance from the weighted mean", () => {
+    // Overall centroid weighted by size: p1 = (3*1 + 1*-1)/4 = 0.5, p2 = (3*0 + 1*0.4)/4 = 0.1.
+    const result = findMinorityDivergence([cluster(0, 3, [1, 0]), cluster(1, 1, [-1, 0.4])], props);
+    expect(result?.cluster.id).toBe(1);
+    expect(result?.divergences).toEqual([
+      { propositionId: "p1", text: "A", minorityStance: -1, overallStance: 0.5 },
+      { propositionId: "p2", text: "B", minorityStance: 0.4, overallStance: 0.1 },
+    ]);
+  });
+
+  it("keeps only the top N divergences", () => {
+    const many = Array.from({ length: 8 }, (_, j) => ({ id: `p${j}`, text: String(j) }));
+    const result = findMinorityDivergence(
+      [
+        cluster(
+          0,
+          9,
+          many.map(() => 1),
+        ),
+        cluster(
+          1,
+          1,
+          many.map((_, j) => j / 10),
+        ),
+      ],
+      many,
+      3,
+    );
+    expect(result?.divergences.map((d) => d.propositionId)).toEqual(["p0", "p1", "p2"]);
   });
 });

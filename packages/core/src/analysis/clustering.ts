@@ -2,6 +2,7 @@
 // No LLM, network, or fs access — kept separate for testability.
 
 import type {
+  OpinionCluster,
   OpinionClusterBridging,
   OpinionClusterConsensus,
   OpinionClusterDivisive,
@@ -174,4 +175,40 @@ export function computeBridging(
     .filter((r) => r.minGroupSupport > 0.3)
     .sort((a, b) => b.bridgingScore - a.bridgingScore)
     .slice(0, 5);
+}
+
+export type MinorityDivergence = {
+  propositionId: string;
+  text: string;
+  minorityStance: number; // the minority cluster's centroid value
+  overallStance: number; // size-weighted mean of all cluster centroids
+};
+
+/**
+ * The minority report's numbers: the smallest cluster (first one on ties) and
+ * the `top` propositions where its centroid is farthest from the size-weighted
+ * overall centroid. null with fewer than two clusters. Computed here so the
+ * model only interprets these numbers, never derives them.
+ */
+export function findMinorityDivergence(
+  clusters: OpinionCluster[],
+  propositions: OpinionClusterProposition[],
+  top = 5,
+): { cluster: OpinionCluster; divergences: MinorityDivergence[] } | null {
+  if (clusters.length < 2) return null;
+  const minority = clusters.reduce((min, c) => (c.size < min.size ? c : min));
+  const totalSize = clusters.reduce((sum, c) => sum + c.size, 0);
+  const divergences = propositions
+    .map((p, j) => {
+      const weighted = clusters.reduce((acc, c) => acc + (c.centroid[j] ?? 0) * c.size, 0);
+      const overallStance = totalSize > 0 ? weighted / totalSize : 0;
+      const minorityStance = minority.centroid[j] ?? 0;
+      return { propositionId: p.id, text: p.text, minorityStance, overallStance };
+    })
+    .sort(
+      (a, b) =>
+        Math.abs(b.minorityStance - b.overallStance) - Math.abs(a.minorityStance - a.overallStance),
+    )
+    .slice(0, top);
+  return { cluster: minority, divergences };
 }
