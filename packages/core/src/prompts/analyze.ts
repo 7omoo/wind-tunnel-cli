@@ -38,6 +38,7 @@ export type VerdictPromptInput = {
   stats: { total: number; counts: SentimentCounts; average: number };
   opinionCount: number;
   sample: ScoredOpinion[]; // sorted by score ascending
+  maxSampleIds: number; // cap on sampleOpinionIds per trigger
 };
 
 export function verdictPrompts(opts: VerdictPromptInput): { system: string; prompt: string } {
@@ -67,12 +68,12 @@ export function verdictPrompts(opts: VerdictPromptInput): { system: string; prom
     ? `評価の指針:
 - inflammationIndex: 0-100 の炎上指数 (0=安全、100=炎上確実)。集計統計と反応の内容の両方を根拠にすること
 - 炎上とは「怒り・不快感・道徳的反発が拡散する」ことである。反応の大半が無関心・退屈・「意味がない」という冷めた評価で、誰も傷つけず怒らせてもいないなら、批判的な反応が多くても指数は低く (25 以下に) すること。退屈は炎上ではない
-- triggers: 何が・誰を不快にさせるか。実際に感情的・道徳的な反発を起こしている表現だけを挙げること (単に「つまらない」と言われた表現は trigger ではない)。expression は問題の表現、offendedSegment は不快に感じる層、count はその表現に反発している反応のおおよその件数、sampleOpinionIds は根拠となる反応の personaId
+- triggers: 何が・誰を不快にさせるか。実際に感情的・道徳的な反発を起こしている表現だけを挙げること (単に「つまらない」と言われた表現は trigger ではない)。expression は問題の表現、offendedSegment は不快に感じる層、count はその表現に反発している反応のおおよその件数、sampleOpinionIds は根拠となる代表的な反応の personaId を最大 ${opts.maxSampleIds} 件 (該当する反応をすべて挙げないこと。件数は count で表す)
 - safeVersion: 元の意図を保ちつつ炎上リスクを下げた修正版`
     : `Guidance:
 - inflammationIndex: 0-100 backlash index (0=safe, 100=certain backlash), grounded in both the aggregate statistics and the reactions
 - Backlash means spreading anger, offense, or moral objection. If most reactions are indifference, boredom, or "this is pointless" — with nobody actually offended — the index must stay low (25 or less) even when many reactions are negative. Boring is not backlash
-- triggers: what offends whom — only wording that provokes genuine emotional or moral pushback (being called dull does not make an expression a trigger). expression = the problematic wording, offendedSegment = who it offends, count = roughly how many reactions object to it, sampleOpinionIds = personaIds of supporting reactions
+- triggers: what offends whom — only wording that provokes genuine emotional or moral pushback (being called dull does not make an expression a trigger). expression = the problematic wording, offendedSegment = who it offends, count = roughly how many reactions object to it, sampleOpinionIds = personaIds of at most ${opts.maxSampleIds} representative supporting reactions (not every matching reaction — count carries the number)
 - safeVersion: a revision that preserves the original intent while lowering the risk`;
 
   return {

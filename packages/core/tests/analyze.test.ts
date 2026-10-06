@@ -1,3 +1,4 @@
+import type { MockLanguageModelV4 } from "ai/test";
 import { describe, expect, it } from "vitest";
 import { analyzeVerdict, scoreOpinions } from "../src/pipeline/analyze";
 import type { Opinion } from "../src/types";
@@ -222,5 +223,60 @@ describe("analyzeVerdict", () => {
     await analyzeVerdict({ topic: "T", opinions, scores, outputLang: "ja", model });
     expect(seen).toContain("批判的 1 件 (50%)"); // aggregate stats block
     expect(seen).toContain("[a] (score -50) 反対です"); // sampled reaction line
+  });
+
+  // A trigger cites a few representative reactions, not all of them. Uncapped,
+  // a 4B model listed 98 persona ids for one trigger (8k completion tokens)
+  // and the verdict hit its 600 s timeout.
+  describe("sample opinion ids", () => {
+    const opinions = Array.from({ length: 98 }, (_, i) => opinion(`p${i}`, "反対です"));
+    const scores = opinions.map((o) => ({ personaId: o.personaId, score: -60, reason: "" }));
+    const verdictJson = (ids: string[]) =>
+      JSON.stringify({
+        inflammationIndex: 70,
+        riskLevel: "High",
+        summary: "",
+        triggers: [
+          {
+            expression: "減給",
+            offendedSegment: "会社員",
+            severity: "High",
+            count: ids.length,
+            sampleOpinionIds: ids,
+          },
+        ],
+        safeVersion: "",
+      });
+
+    it("declares the cap in the schema sent to the model", async () => {
+      const model = textModel([verdictJson(["p0"])]);
+      await analyzeVerdict({ topic: "T", opinions, scores, outputLang: "ja", model });
+      const format = (model as unknown as MockLanguageModelV4).doGenerateCalls[0]?.responseFormat;
+      const schema = format?.type === "json" ? format.schema : undefined;
+      expect(schema).toMatchObject({
+        properties: {
+          triggers: {
+            items: { properties: { sampleOpinionIds: { maxItems: 5 } } },
+          },
+        },
+      });
+    });
+
+    // Not every server honours maxItems; extra ids are trimmed, not a failure.
+    it("keeps the first ids when the model returns more than the cap", async () => {
+      const ids = opinions.map((o) => o.personaId);
+      const model = textModel([verdictJson(ids)]);
+      const verdict = await analyzeVerdict({
+        topic: "T",
+        opinions,
+        scores,
+        outputLang: "ja",
+        model,
+      });
+      const kept = ids.slice(0, 5);
+      expect(verdict.triggers[0]?.sampleOpinionIds).toEqual(kept);
+      expect(verdict.triggers[0]?.count).toBe(98);
+      expect(Object.keys(verdict.triggerAssignment ?? {})).toEqual(kept);
+    });
   });
 });

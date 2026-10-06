@@ -87,7 +87,9 @@ The CLI restructures stage 3a:
    safe version) receives aggregate statistics from step 1 plus a stratified
    sample of raw opinions (most critical, most favorable, random neutral) that
    fits a fixed context budget. At N <= ~150 the "sample" is simply all opinions,
-   which reproduces the original behavior.
+   which reproduces the original behavior. The output stays bounded too: each
+   trigger cites at most 5 representative reactions (`sampleOpinionIds`) while
+   `count` carries how many object, so completion length does not grow with N.
 3. **Propositions from a sample, stances for all.** Proposition extraction (3b)
    reads a stratified sample; stance classification then runs every opinion
    against the propositions in batches of 10 (unchanged from the original).

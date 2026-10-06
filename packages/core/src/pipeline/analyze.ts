@@ -9,6 +9,7 @@
 //
 // All JSON comes back through constrained decoding (Output.object -> Ollama
 // `format`), so the generation schemas here are strict — no .catch/.default.
+// One deliberate exception: the trigger sample-id cap (see verdictGenSchema).
 
 import { generateText, type LanguageModel, Output } from "ai";
 import { z } from "zod";
@@ -22,6 +23,10 @@ import { chunk, mapWaves } from "./batch";
 import { type ScoredOpinion, stratifiedSample } from "./sample";
 
 export const SCORE_BATCH_SIZE = 25;
+
+// Representative reactions cited per trigger. The count field carries how many
+// object; the ids are examples, so a handful is enough.
+export const MAX_SAMPLE_OPINION_IDS = 5;
 
 // === 1. Per-opinion scores (bulk model, batched) ===
 
@@ -133,6 +138,12 @@ export async function scoreOpinions(opts: ScoreOptions): Promise<ScoreResult> {
 
 // === 2. Verdict (analysis model, one call on a budgeted sample) ===
 
+// sampleOpinionIds carries its cap as JSON Schema metadata (maxItems reaches
+// the decoder) rather than .max(), and analyzeVerdict trims the array. Without
+// a cap small models list every matching persona id — 98 ids, ~8k completion
+// tokens, past the 600 s verdict timeout at N=100. Decoders that honour
+// maxItems stop at the cap; one that ignores it costs extra tokens but must
+// not fail a long call over surplus examples, which .max() would do.
 const verdictGenSchema = z.object({
   inflammationIndex: z.number().min(0).max(100),
   riskLevel: riskLevelSchema,
@@ -144,7 +155,7 @@ const verdictGenSchema = z.object({
         offendedSegment: z.string(),
         severity: severitySchema,
         count: z.number().min(0),
-        sampleOpinionIds: z.array(z.string()),
+        sampleOpinionIds: z.array(z.string()).meta({ maxItems: MAX_SAMPLE_OPINION_IDS }),
       }),
     )
     .max(8),
@@ -187,6 +198,7 @@ export async function analyzeVerdict(opts: VerdictOptions): Promise<FlameResult>
     },
     opinionCount: opts.opinions.length,
     sample,
+    maxSampleIds: MAX_SAMPLE_OPINION_IDS,
   });
 
   const { output } = await generateText({
@@ -198,8 +210,12 @@ export async function analyzeVerdict(opts: VerdictOptions): Promise<FlameResult>
     prompt,
   });
 
+  const triggers: Trigger[] = output.triggers.map((t) => ({
+    ...t,
+    sampleOpinionIds: t.sampleOpinionIds.slice(0, MAX_SAMPLE_OPINION_IDS),
+  }));
   // triggerAssignment: personaId -> trigger index, for coloring reactions.
-  const triggers: Trigger[] = output.triggers;
+  // Built from the capped examples, so it marks representative reactions only.
   const triggerAssignment: Record<string, number> = {};
   triggers.forEach((t, idx) => {
     for (const id of t.sampleOpinionIds) triggerAssignment[id] = idx;

@@ -8,6 +8,7 @@ function prompt(outputLang: "ja" | "en"): string {
     stats: { total: 2, counts: { critical: 1, neutral: 0, favorable: 1 }, average: 0 },
     opinionCount: 2,
     sample: [],
+    maxSampleIds: 5,
   }).prompt;
 }
 
@@ -19,5 +20,13 @@ describe("verdictPrompts", () => {
     for (const field of ["expression", "offendedSegment", "count", "sampleOpinionIds"]) {
       expect(text).toContain(field);
     }
+  });
+
+  // Small models otherwise list every matching persona id (see analyze.test.ts).
+  it.each([
+    ["ja", "最大 5 件"],
+    ["en", "at most 5"],
+  ] as const)("caps sampleOpinionIds at 5 in %s", (lang, phrase) => {
+    expect(prompt(lang)).toContain(phrase);
   });
 });
