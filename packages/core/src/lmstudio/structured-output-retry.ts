@@ -1,8 +1,10 @@
 // Workaround for LM Studio skipping structured output after a plain request.
 //
-// TODO(lmstudio): remove once LM Studio applies response_format to the first
-// structured request that follows an unstructured one. Not publicly reported
-// as of 2026-10-06; observed on LM Studio 0.4.x with qwen/qwen3-4b-2507.
+// TODO(lmstudio-bug-tracker#2476): remove once LM Studio applies
+// response_format to the first structured request that follows an
+// unstructured one. Reported 2026-10-06 with a repro script (LM Studio 0.4.25,
+// MLX runtime 1.11.0, qwen/qwen3-4b-2507).
+// https://github.com/lmstudio-ai/lmstudio-bug-tracker/issues/2476
 // Reproduce: send any plain chat completion, then one with
 // response_format json_schema — the reply ignores the schema (free text or
 // arbitrary JSON); the next identical request conforms. In a run this hits
