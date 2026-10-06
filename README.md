@@ -106,7 +106,7 @@ datasets (CC BY 4.0); custom pools plug in via `--personas-file`.
 | [Commands & configuration](docs/commands.md) | every command and option, config.toml, env vars, run artifacts |
 | [Docker](docs/docker.md) | Linux + NVIDIA compose setup, image usage |
 | [Design](docs/DESIGN.md) | architecture and the decisions behind it |
-| [Testing](docs/testing.md) | the four-layer test strategy, coverage, what deliberately isn't automated |
+| [Testing](docs/testing.md) | the five-layer test strategy, coverage, what deliberately isn't automated |
 | [Releasing](docs/RELEASE.md) | maintainer release checklist |
 
 ## Development
