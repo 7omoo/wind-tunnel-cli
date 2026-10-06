@@ -60,8 +60,8 @@ export type Trigger = {
   expression: string;
   offendedSegment: string;
   severity: Severity;
-  count: number;
-  sampleOpinionIds: string[];
+  count: number; // roughly how many reactions object
+  sampleOpinionIds: string[]; // up to 5 representative reactions, not all of them
 };
 
 // Per-opinion sentiment, composed in code from the model's stance + intensity.
@@ -80,6 +80,7 @@ export type FlameResult = {
   safeVersion: string;
   opinionScores?: OpinionScore[];
   // personaId -> index into triggers[], for coloring reactions by trigger.
+  // Covers each trigger's sampleOpinionIds only — examples, not every reaction.
   triggerAssignment?: Record<string, number>;
 };
 

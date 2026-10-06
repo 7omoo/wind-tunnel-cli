@@ -1,5 +1,5 @@
 import { PassThrough } from "node:stream";
-import { CuratedError } from "@wind-tunnel/core";
+import { CuratedError, type ModelProvider } from "@wind-tunnel/core";
 import { describe, expect, it } from "vitest";
 import { classifyError, renderError } from "../src/errors";
 
@@ -10,7 +10,13 @@ function connError(code: string): Error {
   return new Error("fetch failed", { cause: inner });
 }
 
-function render(e: unknown, opts?: { resumeId?: string }): string {
+function timeoutError(): Error {
+  const timeout = new Error("The operation was aborted due to timeout");
+  timeout.name = "TimeoutError";
+  return timeout;
+}
+
+function render(e: unknown, opts?: { resumeId?: string; providers?: ModelProvider[] }): string {
   const stream = new PassThrough();
   let out = "";
   stream.on("data", (chunk) => {
@@ -30,9 +36,39 @@ describe("classifyError", () => {
   });
 
   it("recognizes timeouts from AbortSignal.timeout", () => {
-    const timeout = new Error("The operation was aborted due to timeout");
-    timeout.name = "TimeoutError";
-    expect(classifyError(timeout).kind).toBe("timeout");
+    expect(classifyError(timeoutError()).kind).toBe("timeout");
+  });
+
+  // The remedy names the server the run actually uses.
+  describe("timeout remedies follow the run's providers", () => {
+    const text = (providers: ModelProvider[]) => {
+      const c = classifyError(timeoutError(), { providers });
+      return [c.headline, ...c.hints].join("\n");
+    };
+
+    it("points LM Studio runs at lms ps and an LM Studio restart", () => {
+      const out = text(["lmstudio"]);
+      expect(out).toContain("LM Studio");
+      expect(out).toContain("lms ps");
+      expect(out).not.toMatch(/ollama/i);
+    });
+
+    it("keeps the Ollama restart for Ollama runs", () => {
+      const out = text(["ollama"]);
+      expect(out).toContain("brew services restart ollama");
+      expect(out).not.toContain("LM Studio");
+    });
+
+    it("covers both servers when a run mixes them", () => {
+      const out = text(["ollama", "lmstudio"]);
+      expect(out).toContain("brew services restart ollama");
+      expect(out).toContain("lms ps");
+    });
+
+    it("blames no local server for a Gemini-only run", () => {
+      const out = text(["gemini"]);
+      expect(out).not.toMatch(/ollama|LM Studio/i);
+    });
   });
 
   it("recognizes Hugging Face ingest failures before the generic connection class", () => {
@@ -81,6 +117,10 @@ describe("renderError", () => {
         resumeId: "r1",
       }),
     ).not.toContain("resume r1");
+  });
+
+  it("passes the run's providers through to the classifier", () => {
+    expect(render(timeoutError(), { providers: ["lmstudio"] })).toContain("lms ps");
   });
 
   it("points unknown errors at WT_DEBUG and the issue tracker, and only those", () => {
