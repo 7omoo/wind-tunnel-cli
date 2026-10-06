@@ -26,9 +26,15 @@ export function formatDuration(ms: number): string {
   return `${s}s`;
 }
 
+// Cells of a `width`-cell bar that `value` out of `max` fills (clamped, rounded).
+export function filledCells(value: number, max: number, width: number): number {
+  if (max <= 0) return 0;
+  return Math.round((Math.min(Math.max(value, 0), max) / max) * width);
+}
+
 export function progressBar(done: number, total: number, width = 20): string {
   if (total <= 0) return " ".repeat(width);
-  const filled = Math.round((Math.min(done, total) / total) * width);
+  const filled = filledCells(done, total, width);
   return "█".repeat(filled) + "░".repeat(width - filled);
 }
 
@@ -40,8 +46,7 @@ export function gauge(
   style: Parameters<typeof styleText>[0],
   enabled: boolean,
 ): string {
-  const clamped = Math.min(Math.max(value, 0), max);
-  const filled = Math.round((clamped / max) * width);
+  const filled = filledCells(value, max, width);
   return (
     paint(style, "█".repeat(filled), enabled) + paint("dim", "░".repeat(width - filled), enabled)
   );

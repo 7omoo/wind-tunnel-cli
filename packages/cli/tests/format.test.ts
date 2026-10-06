@@ -2,12 +2,25 @@ import { describe, expect, it } from "vitest";
 import {
   clip,
   displayWidth,
+  filledCells,
   formatDuration,
   gauge,
   progressBar,
   segmentedBar,
   wrap,
 } from "../src/render/format";
+
+describe("filledCells", () => {
+  it("rounds the filled share and clamps out-of-range values", () => {
+    expect(filledCells(1, 3, 10)).toBe(3);
+    expect(filledCells(-5, 10, 10)).toBe(0);
+    expect(filledCells(50, 10, 10)).toBe(10);
+  });
+
+  it("fills nothing when there is no maximum", () => {
+    expect(filledCells(5, 0, 10)).toBe(0);
+  });
+});
 
 describe("gauge", () => {
   it("fills by value with a dim remainder (colors off)", () => {

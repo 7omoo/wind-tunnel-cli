@@ -3,6 +3,7 @@
 // corrupts a concurrent pull.
 
 import { access } from "node:fs/promises";
+import { join } from "node:path";
 import { DuckDBConnection, DuckDBInstance } from "@duckdb/node-api";
 import type { Country, RawPersona } from "../types";
 import { PERSONA_COLUMNS } from "./pool-schema";
@@ -105,5 +106,5 @@ export async function openPersonaPool(poolPath: string): Promise<PersonaPool> {
 }
 
 export function defaultPoolPath(dataRootDir: string): string {
-  return `${dataRootDir}/personas.duckdb`;
+  return join(dataRootDir, "personas.duckdb");
 }

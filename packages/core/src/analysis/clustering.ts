@@ -1,7 +1,9 @@
 // Pure numeric functions for the vote-matrix opinion-cluster analysis.
 // No LLM, network, or fs access — kept separate for testability.
 
+import { kmeans } from "ml-kmeans";
 import type {
+  OpinionCluster,
   OpinionClusterBridging,
   OpinionClusterConsensus,
   OpinionClusterDivisive,
@@ -81,6 +83,75 @@ export function silhouette(data: number[][], labels: number[]): number {
   return totalS / n;
 }
 
+// How many consensus / divisive / bridging propositions a result keeps.
+export const TOP_PROPOSITIONS = 5;
+
+// A bridging proposition needs more than this agree rate (0..1) in every group.
+const BRIDGING_MIN_SUPPORT = 0.3;
+
+// Upper bound on the number of opinion groups tried by k-means.
+export const MAX_K = 5;
+
+// Below this best silhouette, any split is treated as fabricated structure
+// (Kaufman & Rousseeuw's "no substantial structure" threshold).
+export const SILHOUETTE_MIN = 0.25;
+
+// Fixed k-means++ seed: the same vote matrix must always yield the same groups,
+// otherwise re-running an identical run can change the number of camps.
+const KMEANS_SEED = 42;
+
+/**
+ * Splits the vote matrix rows into opinion groups: k-means (on the votes, not
+ * a projection) for k = 2..min(MAX_K, n/2), keeping the k with the best
+ * silhouette. Honesty rule: k-means always returns k groups, even for a
+ * unanimous corpus — which then reads as two camps with near-identical beliefs
+ * (observed in production) — so a best silhouette below SILHOUETTE_MIN
+ * collapses to a single group.
+ */
+export function partitionVotes(voteMatrix: number[][]): { k: number; labels: number[] } {
+  let best = { k: 1, labels: voteMatrix.map(() => 0), score: -1 };
+  const maxK = Math.min(MAX_K, Math.floor(voteMatrix.length / 2));
+  for (let k = 2; k <= maxK; k++) {
+    const { clusters: labels } = kmeans(voteMatrix, k, {
+      initialization: "kmeans++",
+      seed: KMEANS_SEED,
+    });
+    const score = silhouette(voteMatrix, labels);
+    if (score > best.score) best = { k, labels, score };
+  }
+  if (best.score < SILHOUETTE_MIN) return { k: 1, labels: voteMatrix.map(() => 0) };
+  return { k: best.k, labels: best.labels };
+}
+
+/**
+ * Groups rows by label into clusters with their mean vote (centroid) and
+ * member ids. Labels with no members — k-means can leave a centroid on votes
+ * another one already covers — are dropped rather than shown as "group N (0)".
+ */
+export function buildClusters(
+  labels: number[],
+  k: number,
+  voteMatrix: number[][],
+  memberIds: string[],
+): OpinionCluster[] {
+  const width = voteMatrix[0]?.length ?? 0;
+  return Array.from({ length: k }, (_, id) => {
+    const rows = labels.flatMap((label, i) => (label === id ? [i] : []));
+    const centroid = Array.from({ length: width }, (_, j) => {
+      const sum = rows.reduce((acc, i) => acc + (voteMatrix[i]?.[j] ?? 0), 0);
+      return rows.length > 0 ? sum / rows.length : 0;
+    });
+    const ids = rows.map((i) => memberIds[i]).filter((m): m is string => m !== undefined);
+    return { id, size: ids.length, centroid, memberIds: ids };
+  }).filter((c) => c.size > 0);
+}
+
+// Distinct cluster labels in numeric order — the order every groupSupport
+// array follows. (A bare .sort() compares as strings: [10, 2].)
+function sortedGroupLabels(labels: number[]): number[] {
+  return [...new Set(labels)].sort((a, b) => a - b);
+}
+
 /**
  * Consensus detection (product of Laplace-smoothed per-group agree rates).
  * Propositions all groups agree on score highest. Sorted by score, descending.
@@ -90,7 +161,7 @@ export function detectConsensus(
   labels: number[],
   propositions: OpinionClusterProposition[],
 ): OpinionClusterConsensus[] {
-  const uniqueLabels = [...new Set(labels)].sort();
+  const uniqueLabels = sortedGroupLabels(labels);
 
   return propositions
     .map((prop, j) => {
@@ -116,7 +187,7 @@ export function detectDivision(
   labels: number[],
   propositions: OpinionClusterProposition[],
 ): OpinionClusterDivisive[] {
-  const uniqueLabels = [...new Set(labels)].sort();
+  const uniqueLabels = sortedGroupLabels(labels);
 
   return propositions
     .map((prop, j) => {
@@ -134,15 +205,15 @@ export function detectDivision(
 }
 
 /**
- * Bridging propositions (min support > 0.3 in every group).
- * bridgingScore = minGroupSupport * meanGroupSupport, descending, top 5.
+ * Bridging propositions (support above BRIDGING_MIN_SUPPORT in every group).
+ * bridgingScore = minGroupSupport * meanGroupSupport, descending, top TOP_PROPOSITIONS.
  */
 export function computeBridging(
   voteMatrix: number[][],
   labels: number[],
   propositions: OpinionClusterProposition[],
 ): OpinionClusterBridging[] {
-  const uniqueLabels = [...new Set(labels)].sort();
+  const uniqueLabels = sortedGroupLabels(labels);
 
   const results = propositions.map((prop, j) => {
     const groupSupport = uniqueLabels.map((label) => {
@@ -165,7 +236,43 @@ export function computeBridging(
   });
 
   return results
-    .filter((r) => r.minGroupSupport > 0.3)
+    .filter((r) => r.minGroupSupport > BRIDGING_MIN_SUPPORT)
     .sort((a, b) => b.bridgingScore - a.bridgingScore)
-    .slice(0, 5);
+    .slice(0, TOP_PROPOSITIONS);
+}
+
+export type MinorityDivergence = {
+  propositionId: string;
+  text: string;
+  minorityStance: number; // the minority cluster's centroid value
+  overallStance: number; // size-weighted mean of all cluster centroids
+};
+
+/**
+ * The minority report's numbers: the smallest cluster (first one on ties) and
+ * the `top` propositions where its centroid is farthest from the size-weighted
+ * overall centroid. null with fewer than two clusters. Computed here so the
+ * model only interprets these numbers, never derives them.
+ */
+export function findMinorityDivergence(
+  clusters: OpinionCluster[],
+  propositions: OpinionClusterProposition[],
+  top = 5,
+): { cluster: OpinionCluster; divergences: MinorityDivergence[] } | null {
+  if (clusters.length < 2) return null;
+  const minority = clusters.reduce((min, c) => (c.size < min.size ? c : min));
+  const totalSize = clusters.reduce((sum, c) => sum + c.size, 0);
+  const divergences = propositions
+    .map((p, j) => {
+      const weighted = clusters.reduce((acc, c) => acc + (c.centroid[j] ?? 0) * c.size, 0);
+      const overallStance = totalSize > 0 ? weighted / totalSize : 0;
+      const minorityStance = minority.centroid[j] ?? 0;
+      return { propositionId: p.id, text: p.text, minorityStance, overallStance };
+    })
+    .sort(
+      (a, b) =>
+        Math.abs(b.minorityStance - b.overallStance) - Math.abs(a.minorityStance - a.overallStance),
+    )
+    .slice(0, top);
+  return { cluster: minority, divergences };
 }

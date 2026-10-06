@@ -86,11 +86,11 @@ export async function pullCountryPool(opts: {
       FROM read_parquet('${file.replaceAll("'", "''")}')`;
 
     let filesRead = 0;
+    let staged = 0; // rows in the staging table after the previous file
     for (const [index, file] of files.entries()) {
       // Stop early once every expected region is full (jp/usa; see
       // expectedRegionsFull). Relaxed-mode countries read one more file and
       // stop on a zero-row insert instead.
-      const before = await countRows(connection, "stage");
       await connection.run(`
         INSERT INTO stage
         WITH src AS (${sourceSelect(file)}),
@@ -103,20 +103,23 @@ export async function pullCountryPool(opts: {
         WHERE __rn <= ${cap} - COALESCE(__have, 0)`);
       filesRead = index + 1;
 
-      const after = await countRows(connection, "stage");
+      // One per-region count serves the progress event, the stop checks and
+      // the running total (NULL regions are a group too, so the sum is exact).
       const regionRows = await connection.run(
         "SELECT region, count(*)::int FROM stage GROUP BY region",
       );
       const regions = await regionRows.getRows();
+      const total = regions.reduce((sum, r) => sum + Number(r[1]), 0);
       emit({
         type: "file",
         index: filesRead,
         total: files.length,
-        rows: after,
+        rows: total,
         regions: regions.length,
       });
 
-      if (after === before) break; // nothing new — every reachable region is full
+      if (total === staged) break; // nothing new — every reachable region is full
+      staged = total;
       const counts = new Map(regions.map((r) => [String(r[0]), Number(r[1])]));
       if (expectedRegionsFull(counts, preset.expectedRegions, cap)) break;
     }

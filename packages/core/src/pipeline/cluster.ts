@@ -4,13 +4,14 @@
 // (propositions, stances, labels, profiles).
 
 import type { LanguageModel } from "ai";
-import { kmeans } from "ml-kmeans";
 import { PCA } from "ml-pca";
 import {
+  buildClusters,
   computeBridging,
   detectConsensus,
   detectDivision,
-  silhouette,
+  partitionVotes,
+  TOP_PROPOSITIONS,
 } from "../analysis/clustering";
 import type { Opinion, OpinionClusterResult, OutputLang } from "../types";
 import { clampPromptInput } from "../util/sanitize";
@@ -21,9 +22,8 @@ import {
   labelAxes,
 } from "./cluster-stages";
 
-// Fixed k-means++ seed: the same vote matrix must always yield the same groups,
-// otherwise re-running an identical run can change the number of camps.
-const KMEANS_SEED = 42;
+// PCA axes kept for the map (PC1/PC2 are the defaults; the rest are selectable).
+const MAX_AXES = 5;
 
 export type ClusterModels = {
   propositions: LanguageModel; // analysis role
@@ -77,7 +77,7 @@ export async function clusterOpinions(
   // map can put any two of them on x/y (PC1/PC2 stay the defaults).
   const pca = new PCA(voteMatrix);
   const projected = pca.predict(voteMatrix).to2DArray();
-  const AXIS_COUNT = Math.min(5, projected[0]?.length ?? 2);
+  const AXIS_COUNT = Math.min(MAX_AXES, projected[0]?.length ?? 2);
   const plotData = opinions.map((o, i) => {
     const row = projected[i] ?? [];
     return {
@@ -99,53 +99,20 @@ export async function clusterOpinions(
     model: opts.models.axisLabels,
   });
 
-  // Phase 5: k-means on the vote matrix (not the projection), k chosen by silhouette.
-  let bestK = 2;
-  let bestScore = -1;
-  let bestLabels: number[] = [];
-  const maxK = Math.min(5, Math.floor(opinions.length / 2));
-  for (let k = 2; k <= maxK; k++) {
-    const result = kmeans(voteMatrix, k, { initialization: "kmeans++", seed: KMEANS_SEED });
-    const score = silhouette(voteMatrix, result.clusters);
-    if (score > bestScore) {
-      bestScore = score;
-      bestK = k;
-      bestLabels = result.clusters;
-    }
-  }
-
-  // Honesty rule: k-means always produces k groups, even for a unanimous
-  // corpus — which then reads as two camps with near-identical beliefs
-  // (observed in production). Below the customary "no substantial structure"
-  // silhouette threshold (Kaufman & Rousseeuw, 0.25) the split is fabricated,
-  // so collapse to a single group and let the output say "one camp".
-  const SILHOUETTE_MIN = 0.25;
-  if (bestScore < SILHOUETTE_MIN) {
-    bestK = 1;
-    bestLabels = opinions.map(() => 0);
-  }
-
-  // Empty clusters happen when k-means places two centroids on identical votes
-  // (uniform corpora); they carry no members and would otherwise surface as
-  // "group N (0)" with a fabricated profile — drop them.
-  const clusters = Array.from({ length: bestK }, (_, k) => {
-    const memberIndices = bestLabels.map((l, i) => (l === k ? i : -1)).filter((i) => i >= 0);
-    const memberIds = memberIndices
-      .map((i) => opinions[i]?.personaId)
-      .filter((id): id is string => id !== undefined);
-    const centroid = propositions.map((_, j) => {
-      const sum = memberIndices.reduce((acc, i) => acc + (voteMatrix[i]?.[j] ?? 0), 0);
-      return memberIndices.length > 0 ? sum / memberIndices.length : 0;
-    });
-    return { id: k, size: memberIds.length, centroid, memberIds };
-  }).filter((c) => c.size > 0);
+  // Phase 5: opinion groups (k-means on the votes, k by silhouette, honesty rule).
+  const { k, labels } = partitionVotes(voteMatrix);
+  const clusters = buildClusters(
+    labels,
+    k,
+    voteMatrix,
+    opinions.map((o) => o.personaId),
+  );
 
   // Phases 6-8: consensus / division / bridging (pure math). Division and
   // bridging are between-group concepts — meaningless for a single camp.
-  const consensus = detectConsensus(voteMatrix, bestLabels, propositions);
-  const divisive = clusters.length >= 2 ? detectDivision(voteMatrix, bestLabels, propositions) : [];
-  const bridging =
-    clusters.length >= 2 ? computeBridging(voteMatrix, bestLabels, propositions) : [];
+  const consensus = detectConsensus(voteMatrix, labels, propositions);
+  const divisive = clusters.length >= 2 ? detectDivision(voteMatrix, labels, propositions) : [];
+  const bridging = clusters.length >= 2 ? computeBridging(voteMatrix, labels, propositions) : [];
 
   // Phases 4 + 9/10 in parallel.
   const [axisLabels, profilesAndMinority] = await Promise.all([
@@ -171,8 +138,8 @@ export async function clusterOpinions(
     propositions,
     clusters,
     plotData,
-    consensus: consensus.slice(0, 5),
-    divisive: divisive.slice(0, 5),
+    consensus: consensus.slice(0, TOP_PROPOSITIONS),
+    divisive: divisive.slice(0, TOP_PROPOSITIONS),
     xAxisLabel: axes[0]?.label ?? "PC1",
     yAxisLabel: axes[1]?.label ?? "PC2",
     axes,

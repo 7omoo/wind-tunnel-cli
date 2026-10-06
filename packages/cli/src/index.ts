@@ -111,4 +111,9 @@ program
     process.exitCode = await runDoctor(opts);
   });
 
-program.parse(process.argv);
+// Actions are async: parseAsync settles once the command has finished, and
+// anything a command didn't handle itself is rendered here, not by Node.
+program.parseAsync(process.argv).catch((e: unknown) => {
+  renderError(e);
+  process.exitCode = 1;
+});

@@ -5,17 +5,19 @@
 
 import { generateText, type LanguageModel, Output } from "ai";
 import { z } from "zod";
-import { stageTimeoutSignal } from "../models/stages";
+import { findMinorityDivergence } from "../analysis/clustering";
+import { ANALYSIS_TEMPERATURE, stageTimeoutSignal } from "../models/stages";
 import { postContentBlock } from "../prompts/post";
 import { outputLangName } from "../schemas";
 import type {
   Opinion,
+  OpinionCluster,
   OpinionClusterGroupProfile,
   OpinionClusterMinorityReport,
   OpinionClusterProposition,
   OutputLang,
 } from "../types";
-import { mapWaves } from "./batch";
+import { chunk, mapWaves } from "./batch";
 
 export const STANCE_BATCH_SIZE = 10;
 
@@ -37,7 +39,7 @@ export async function extractPropositions(opts: {
   const opinionsText = opts.opinions.map((o, i) => `${i + 1}. ${o.text}`).join("\n");
   const { output } = await generateText({
     model: opts.model,
-    temperature: 0.1,
+    temperature: ANALYSIS_TEMPERATURE,
     abortSignal: stageTimeoutSignal("propositions"),
     output: Output.object({ schema }),
     system: `You are an expert in public opinion analysis. Extract specific propositions that can be voted on as agree/disagree from multiple opinions. Output the propositions in ${lang}.`,
@@ -72,10 +74,7 @@ export async function classifyStances(opts: {
   onProgress?: (done: number, total: number) => void;
 }): Promise<{ voteMatrix: number[][]; warnings: string[] }> {
   const batchSize = opts.batchSize ?? STANCE_BATCH_SIZE;
-  const batches: Opinion[][] = [];
-  for (let i = 0; i < opts.opinions.length; i += batchSize) {
-    batches.push(opts.opinions.slice(i, i + batchSize));
-  }
+  const batches = chunk(opts.opinions, batchSize);
   const propList = opts.propositions.map((p, j) => `${j + 1}. ${p.text}`).join("\n");
   const pCount = opts.propositions.length;
 
@@ -91,7 +90,7 @@ export async function classifyStances(opts: {
       const opinionsBlock = batch.map((o, i) => `Opinion ${i + 1}: "${o.text}"`).join("\n");
       const { output } = await generateText({
         model: opts.model,
-        temperature: 0.1,
+        temperature: ANALYSIS_TEMPERATURE,
         abortSignal: stageTimeoutSignal("stance"),
         output: Output.object({ schema }),
         system:
@@ -164,7 +163,7 @@ export async function labelAxes(opts: {
     const schema = z.object({ labels: z.array(z.string()).length(opts.k) });
     const { output } = await generateText({
       model: opts.model,
-      temperature: 0.1,
+      temperature: ANALYSIS_TEMPERATURE,
       abortSignal: stageTimeoutSignal("axis_labels"),
       output: Output.object({ schema }),
       system: `You are an expert in public opinion analysis. Interpret the meaning of PCA axes. Output in ${lang}.`,
@@ -182,8 +181,15 @@ Return exactly ${opts.k} labels, in PC order.`,
 
 // === Group profiles + minority report (analysis model, one combined call) ===
 
+// A centroid value (mean vote in -1..1) beyond this reads as agree/disagree in
+// the group's stance pattern; inside it, neutral.
+const CENTROID_STANCE_THRESHOLD = 0.3;
+
+// Member opinions shown to the model per group when writing its profile.
+const PROFILE_SAMPLE_OPINIONS = 15;
+
 export async function generateGroupProfilesAndMinority(opts: {
-  clusters: { id: number; size: number; centroid: number[]; memberIds: string[] }[];
+  clusters: OpinionCluster[];
   propositions: OpinionClusterProposition[];
   opinions: Opinion[];
   outputLang: OutputLang;
@@ -202,12 +208,17 @@ export async function generateGroupProfilesAndMinority(opts: {
       const stanceDescription = propositions
         .map((p, j) => {
           const val = cluster.centroid[j] ?? 0;
-          const stance = val > 0.3 ? "agree" : val < -0.3 ? "disagree" : "neutral";
+          const stance =
+            val > CENTROID_STANCE_THRESHOLD
+              ? "agree"
+              : val < -CENTROID_STANCE_THRESHOLD
+                ? "disagree"
+                : "neutral";
           return `- "${p.text}": ${stance} (${val.toFixed(2)})`;
         })
         .join("\n");
       const memberOpinions = cluster.memberIds
-        .slice(0, 15)
+        .slice(0, PROFILE_SAMPLE_OPINIONS)
         .map((id) => opinionMap.get(id))
         .filter(Boolean)
         .map((t, i) => `${i + 1}. ${t}`)
@@ -218,30 +229,11 @@ export async function generateGroupProfilesAndMinority(opts: {
 
   // Minority divergence is computed numerically before the call; the model only
   // interprets it (never re-derives the numbers).
-  const hasMinority = clusters.length >= 2;
-  const minCluster = hasMinority
-    ? clusters.reduce((min, c) => (c.size < min.size ? c : min))
-    : null;
+  const minority = findMinorityDivergence(clusters, propositions);
+  const hasMinority = minority !== null;
+  const minCluster = minority?.cluster ?? null;
+  const divergences = minority?.divergences ?? [];
   const totalSize = clusters.reduce((sum, c) => sum + c.size, 0);
-  const divergences =
-    hasMinority && minCluster
-      ? (() => {
-          const overallCentroid = propositions.map((_, j) => {
-            const sum = clusters.reduce((acc, c) => acc + (c.centroid[j] ?? 0) * c.size, 0);
-            return totalSize > 0 ? sum / totalSize : 0;
-          });
-          return propositions
-            .map((p, j) => ({
-              propositionId: p.id,
-              text: p.text,
-              minorityStance: minCluster.centroid[j] ?? 0,
-              overallStance: overallCentroid[j] ?? 0,
-              diff: Math.abs((minCluster.centroid[j] ?? 0) - (overallCentroid[j] ?? 0)),
-            }))
-            .sort((a, b) => b.diff - a.diff)
-            .slice(0, 5);
-        })()
-      : [];
 
   const minIndex = minCluster ? clusters.findIndex((c) => c.id === minCluster.id) : -1;
   const divergenceText = divergences
@@ -284,7 +276,7 @@ export async function generateGroupProfilesAndMinority(opts: {
   try {
     const { output } = await generateText({
       model: opts.model,
-      temperature: 0.1,
+      temperature: ANALYSIS_TEMPERATURE,
       abortSignal: stageTimeoutSignal("profiles"),
       output: Output.object({ schema }),
       system: `You are an expert in opinion group analysis${hasMinority ? " and minority blind-spot analysis" : ""}. Profile each opinion group independently${hasMinority ? ", then surface what the majority overlooks about the minority" : ""}. Output in ${lang}.`,
@@ -329,12 +321,7 @@ Return exactly ${clusters.length} group profiles, in the SAME ORDER as the group
       totalSize,
       narrative: m?.narrative ?? "",
       blindSpots: m?.blindSpots ?? [],
-      topDivergences: divergences.map((d) => ({
-        propositionId: d.propositionId,
-        text: d.text,
-        minorityStance: d.minorityStance,
-        overallStance: d.overallStance,
-      })),
+      topDivergences: divergences,
     };
   }
 

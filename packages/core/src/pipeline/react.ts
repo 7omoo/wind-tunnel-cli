@@ -3,7 +3,7 @@
 // checkpoint append), which is what makes a 15-minute local run interruptible
 // for free.
 //
-// Concurrency is wave-based: `concurrency` requests in flight per wave, which
+// Concurrency is wave-based (settleWaves): `concurrency` requests per wave, which
 // mirrors how the Ollama daemon serves slots. Per-persona failures are counted,
 // not thrown; zero successes IS thrown (fail-closed — an empty reaction set
 // would make every downstream stage fabricate a verdict from nothing).
@@ -22,7 +22,7 @@ import { CONTEXT_MAX_CHARS } from "../schemas";
 import type { Country, Opinion, PersonaLang, RawPersona, Situation } from "../types";
 import { clampPromptInput } from "../util/sanitize";
 import { shuffle } from "../util/shuffle";
-import { chunk } from "./batch";
+import { settleWaves } from "./batch";
 
 export type ReactOptions = {
   topic: string;
@@ -54,44 +54,39 @@ export async function* reactPersonas(opts: ReactOptions): AsyncGenerator<Opinion
   let failed = 0;
   let lastError: unknown;
 
-  for (const wave of chunk(targets, Math.max(1, opts.concurrency))) {
-    const results = await Promise.allSettled(
-      wave.map(async (p): Promise<Opinion> => {
-        const name = extractName(p.professional_persona, opts.country);
-        const system =
-          buildPersonaSystemPrompt(
-            name,
-            {
-              age: p.age,
-              sex: p.sex,
-              occupation: p.occupation,
-              professional_persona: p.professional_persona,
-            },
-            lang,
-          ) +
-          extra +
-          framing;
-        const { text } = await generateText({
-          model: opts.model,
-          system,
-          prompt,
-          abortSignal: stageTimeoutSignal("react"),
-        });
-        return {
-          personaId: p.uuid,
-          name,
-          text,
-          attributes: {
-            age: p.age,
-            sex: p.sex,
-            occupation: p.occupation,
-            location: p.locality || p.region || "",
-            marital_status: p.marital_status,
-          },
-        };
-      }),
-    );
-    for (const result of results) {
+  // One persona's reaction. System prompt = who they are + honesty guard +
+  // where they are speaking; the user prompt (the post) is shared.
+  const reactOne = async (p: RawPersona): Promise<Opinion> => {
+    const name = extractName(p.professional_persona, opts.country);
+    const persona = {
+      age: p.age,
+      sex: p.sex,
+      occupation: p.occupation,
+      professional_persona: p.professional_persona,
+    };
+    const system = buildPersonaSystemPrompt(name, persona, lang) + extra + framing;
+    const { text } = await generateText({
+      model: opts.model,
+      system,
+      prompt,
+      abortSignal: stageTimeoutSignal("react"),
+    });
+    return {
+      personaId: p.uuid,
+      name,
+      text,
+      attributes: {
+        age: p.age,
+        sex: p.sex,
+        occupation: p.occupation,
+        location: p.locality || p.region || "",
+        marital_status: p.marital_status,
+      },
+    };
+  };
+
+  for await (const wave of settleWaves(targets, opts.concurrency, reactOne)) {
+    for (const result of wave) {
       if (result.status === "fulfilled") {
         succeeded++;
         yield result.value;

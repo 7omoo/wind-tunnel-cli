@@ -21,6 +21,7 @@
 
 import type { Opinion, RunProgressEvent, RunStageName } from "@wind-tunnel/core";
 import { clip, displayWidth, formatDuration, paint, progressBar, useColor } from "./format";
+import { personaMeta } from "./theme";
 
 const STAGE_LABELS: Record<RunStageName, string> = {
   filter: "sampling personas",
@@ -40,11 +41,6 @@ export type ProgressRenderer = {
   onEvent: (event: RunProgressEvent) => void;
   finish: () => void;
 };
-
-function voiceMeta(opinion: Opinion): string {
-  const a = opinion.attributes;
-  return [a.age ? String(a.age) : "", a.occupation, a.location].filter(Boolean).join(" · ");
-}
 
 export function createProgressRenderer(
   stream: NodeJS.WriteStream = process.stderr,
@@ -82,7 +78,7 @@ export function createProgressRenderer(
     ];
     // Last few voices, two lines each: dimmed persona meta, then the reaction.
     for (const opinion of voices) {
-      lines.push(`  ${paint("dim", clip(voiceMeta(opinion), w - 4), color)}`);
+      lines.push(`  ${paint("dim", clip(personaMeta(opinion), w - 4), color)}`);
       lines.push(`    ${clip(opinion.text, w - 6)}`);
     }
     // A bar only when there is a real series to show (1/1 bars carry nothing
@@ -153,7 +149,7 @@ export function createProgressRenderer(
           render();
         } else if (voicesSeen <= 3 || voicesSeen % 5 === 0) {
           // Sampled voices keep CI logs alive without flooding them.
-          const meta = clip(voiceMeta(event.opinion), 30);
+          const meta = clip(personaMeta(event.opinion), 30);
           const text = clip(event.opinion.text, 96 - displayWidth(meta));
           stream.write(`  ${paint("dim", meta, color)}  ${text}\n`);
         }

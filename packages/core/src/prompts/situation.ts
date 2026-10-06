@@ -226,7 +226,11 @@ export function getSituationFraming(
       return ja
         ? "\n\nあなたは今、行政が募集したパブリックコメントにこの案件について意見を提出しています。記名または半記名で、公的な記録に残ります。影響を受ける当事者の立場なら、賛成・反対・要望・懸念を理由とともに述べます。陳情・抗議・支持、いずれもあなたの立場に正直に。"
         : "\n\nYou are submitting a public comment to a government consultation on this matter. Named or semi-named, it goes into the public record. As someone affected, you state support, opposition, requests, or concerns with reasons. Petition, protest, or endorsement — be honest to your position.";
-    default:
-      return "";
+    default: {
+      // Every situation is handled above; a new one fails to compile here
+      // instead of silently getting no channel framing.
+      const unhandled: never = situation;
+      return unhandled;
+    }
   }
 }

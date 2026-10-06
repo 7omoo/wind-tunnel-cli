@@ -5,7 +5,7 @@
 
 import { generateText, type LanguageModel, Output } from "ai";
 import { z } from "zod";
-import { stageTimeoutSignal } from "../models/stages";
+import { ANALYSIS_TEMPERATURE, stageTimeoutSignal } from "../models/stages";
 import { postContentBlock } from "../prompts/post";
 import { outputLangName, severitySchema } from "../schemas";
 import type {
@@ -135,7 +135,7 @@ Based on the opinion-cluster analysis data below (consensus, divisive points, br
 
   const { output } = await generateText({
     model: opts.model,
-    temperature: 0.1,
+    temperature: ANALYSIS_TEMPERATURE,
     abortSignal: stageTimeoutSignal("suggest"),
     output: Output.object({ schema: suggestGenSchema }),
     system,

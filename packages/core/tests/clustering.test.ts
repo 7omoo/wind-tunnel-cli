@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildClusters,
   computeBridging,
   detectConsensus,
   detectDivision,
+  findMinorityDivergence,
+  partitionVotes,
   silhouette,
 } from "../src/analysis/clustering";
 
@@ -63,6 +66,14 @@ describe("detectConsensus", () => {
     expect(result[1]?.score).toBeCloseTo(0.125);
   });
 
+  // Array.prototype.sort() compares as strings: [10, 2].sort() is [10, 2].
+  it("orders groups numerically even past single-digit labels", () => {
+    const [p1] = detectConsensus([[1], [-1]], [10, 2], [{ id: "p1", text: "A" }]);
+    // label 2 (disagrees): 1/3 first, then label 10 (agrees): 2/3
+    expect(p1?.groupSupport[0]).toBeCloseTo(1 / 3);
+    expect(p1?.groupSupport[1]).toBeCloseTo(2 / 3);
+  });
+
   it("orders groupSupport by label, not by first appearance", () => {
     const [p1] = detectConsensus([[1], [-1], [-1]], [1, 0, 0], [{ id: "p1", text: "A" }]);
     // label 0 (two disagree): 1/4; label 1 (one agrees): 2/3
@@ -118,5 +129,97 @@ describe("computeBridging", () => {
     expect(result).toHaveLength(5);
     expect(result.every((b) => b.bridgingScore === 1)).toBe(true);
     expect(result.map((b) => b.propositionId)).not.toContain("p7");
+  });
+});
+
+describe("findMinorityDivergence", () => {
+  const props = [
+    { id: "p1", text: "A" },
+    { id: "p2", text: "B" },
+  ];
+  const cluster = (id: number, size: number, centroid: number[]) => ({
+    id,
+    size,
+    centroid,
+    memberIds: [],
+  });
+
+  it("is null without at least two clusters", () => {
+    expect(findMinorityDivergence([cluster(0, 5, [1, 0])], props)).toBeNull();
+  });
+
+  it("picks the smallest cluster and ranks propositions by distance from the weighted mean", () => {
+    // Overall centroid weighted by size: p1 = (3*1 + 1*-1)/4 = 0.5, p2 = (3*0 + 1*0.4)/4 = 0.1.
+    const result = findMinorityDivergence([cluster(0, 3, [1, 0]), cluster(1, 1, [-1, 0.4])], props);
+    expect(result?.cluster.id).toBe(1);
+    expect(result?.divergences).toEqual([
+      { propositionId: "p1", text: "A", minorityStance: -1, overallStance: 0.5 },
+      { propositionId: "p2", text: "B", minorityStance: 0.4, overallStance: 0.1 },
+    ]);
+  });
+
+  it("keeps only the top N divergences", () => {
+    const many = Array.from({ length: 8 }, (_, j) => ({ id: `p${j}`, text: String(j) }));
+    const result = findMinorityDivergence(
+      [
+        cluster(
+          0,
+          9,
+          many.map(() => 1),
+        ),
+        cluster(
+          1,
+          1,
+          many.map((_, j) => j / 10),
+        ),
+      ],
+      many,
+      3,
+    );
+    expect(result?.divergences.map((d) => d.propositionId)).toEqual(["p0", "p1", "p2"]);
+  });
+});
+
+describe("partitionVotes", () => {
+  it("separates two clear camps into two groups", () => {
+    const votes = [
+      ...Array.from({ length: 5 }, () => [1, 1, -1]),
+      ...Array.from({ length: 5 }, () => [-1, -1, 1]),
+    ];
+    const { k, labels } = partitionVotes(votes);
+    expect(k).toBe(2);
+    expect(new Set(labels.slice(0, 5)).size).toBe(1);
+    expect(labels[0]).not.toBe(labels[5]);
+  });
+
+  // Honesty rule: below SILHOUETTE_MIN a k >= 2 split is fabricated structure.
+  it("collapses a unanimous corpus to a single group", () => {
+    const { k, labels } = partitionVotes(Array.from({ length: 8 }, () => [1, 0, -1]));
+    expect(k).toBe(1);
+    expect(labels).toEqual(Array.from({ length: 8 }, () => 0));
+  });
+
+  it("uses a single group when there are too few rows to split", () => {
+    expect(partitionVotes([[1], [-1], [1]])).toEqual({ k: 1, labels: [0, 0, 0] });
+  });
+});
+
+describe("buildClusters", () => {
+  it("averages member votes into centroids and drops empty labels", () => {
+    // Label 1 is unused (k-means can leave a centroid without members).
+    const clusters = buildClusters(
+      [0, 0, 2],
+      3,
+      [
+        [1, -1],
+        [0, -1],
+        [-1, 1],
+      ],
+      ["a", "b", "c"],
+    );
+    expect(clusters).toEqual([
+      { id: 0, size: 2, centroid: [0.5, -1], memberIds: ["a", "b"] },
+      { id: 2, size: 1, centroid: [-1, 1], memberIds: ["c"] },
+    ]);
   });
 });
