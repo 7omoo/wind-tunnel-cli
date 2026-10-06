@@ -1,3 +1,4 @@
+import { PCA } from "ml-pca";
 import { describe, expect, it } from "vitest";
 import {
   buildClusters,
@@ -7,6 +8,7 @@ import {
   findMinorityDivergence,
   partitionVotes,
   silhouette,
+  topPropositionsByAxis,
 } from "../src/analysis/clustering";
 
 describe("silhouette", () => {
@@ -221,5 +223,43 @@ describe("buildClusters", () => {
       { id: 0, size: 2, centroid: [0.5, -1], memberIds: ["a", "b"] },
       { id: 2, size: 1, centroid: [-1, 1], memberIds: ["c"] },
     ]);
+  });
+});
+
+describe("topPropositionsByAxis", () => {
+  const props = [{ text: "A" }, { text: "B" }, { text: "C" }];
+
+  it("reads loadings as components × propositions", () => {
+    // 2 axes × 3 propositions, deliberately non-square so a transposed read
+    // picks from the wrong cells.
+    const loadings = [
+      [0.1, -0.2, 0.9], // PC1: C dominates
+      [-0.8, 0.5, 0.0], // PC2: A, then B
+    ];
+    const top = topPropositionsByAxis(props, loadings, 2, 2);
+    expect(top.map((axis) => axis.map((p) => p.text))).toEqual([
+      ["C", "B"],
+      ["A", "B"],
+    ]);
+    expect(top[1]?.[0]?.loading).toBe(-0.8);
+  });
+
+  it("matches the orientation ml-pca's getLoadings() actually returns", () => {
+    // Only proposition C varies; A and B carry a little noise. PC1 is then
+    // (almost) C alone. The varying proposition is deliberately not the first:
+    // with variance on A, loadings[0][0] is the same cell either way round,
+    // so a transposed read would pass unnoticed.
+    const votes = [
+      [0, 0, 1],
+      [0.1, 0, -1],
+      [0, 0, 1],
+      [0, 0.1, -1],
+      [0, 0, 1],
+      [0.1, 0, -1],
+    ];
+    const loadings = new PCA(votes).getLoadings().to2DArray();
+    const [pc1Top] = topPropositionsByAxis(props, loadings, 1)[0] ?? [];
+    expect(pc1Top?.text).toBe("C");
+    expect(Math.abs(pc1Top?.loading ?? 0)).toBeCloseTo(1, 2);
   });
 });

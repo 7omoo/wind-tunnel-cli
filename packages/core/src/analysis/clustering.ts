@@ -245,6 +245,10 @@ export function computeBridging(
  * The n propositions with the largest |loading| on each of the first k
  * principal components — the material the axis-label stage names each axis
  * from (labelAxes).
+ *
+ * `loadings` is ml-pca's getLoadings(), which is Uᵀ: rows are principal
+ * components, columns are propositions, so loadings[c][j] is the weight of
+ * proposition j on component c.
  */
 export function topPropositionsByAxis(
   propositions: { text: string }[],
@@ -254,7 +258,7 @@ export function topPropositionsByAxis(
 ): { text: string; loading: number }[][] {
   return Array.from({ length: k }, (_, c) =>
     propositions
-      .map((p, i) => ({ text: p.text, loading: loadings[i]?.[c] ?? 0 }))
+      .map((p, j) => ({ text: p.text, loading: loadings[c]?.[j] ?? 0 }))
       .sort((a, b) => Math.abs(b.loading) - Math.abs(a.loading))
       .slice(0, n),
   );
