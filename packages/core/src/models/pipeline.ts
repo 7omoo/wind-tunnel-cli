@@ -20,7 +20,7 @@ export async function createPipelineModels(
 ): Promise<PipelineModels> {
   // Detect thinking capability once per unique Ollama model. Probe failures
   // (daemon briefly down, unknown model) degrade to "don't send the parameter".
-  const thinkFlags = new Map<string, boolean>();
+  const thinkingModels = new Set<string>();
   const ollamaNames = new Set(
     Object.values(roles)
       .map((spec) => parseModelSpec(spec))
@@ -31,7 +31,7 @@ export async function createPipelineModels(
   await Promise.all(
     [...ollamaNames].map(async (name) => {
       const caps = await getModelCapabilities(name, baseUrl);
-      if (caps?.includes("thinking")) thinkFlags.set(name, false);
+      if (caps?.includes("thinking")) thinkingModels.add(name);
     }),
   );
 
@@ -39,7 +39,9 @@ export async function createPipelineModels(
     role(role: ModelRole, stage: PipelineStage): LanguageModel {
       const spec = roles[role];
       const parsed = parseModelSpec(spec);
-      const think = parsed.provider === "ollama" ? thinkFlags.get(parsed.name) : undefined;
+      // Thinking models run with it off; others must not receive the parameter.
+      const think =
+        parsed.provider === "ollama" && thinkingModels.has(parsed.name) ? false : undefined;
       return resolveModel(spec, settings, { stage, think });
     },
   };
