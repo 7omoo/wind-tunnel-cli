@@ -19,10 +19,16 @@ execSync("pnpm exec tsup --metafile", { cwd: cliDir, stdio: "ignore" });
 const metaPath = join(cliDir, "dist/metafile-esm.json");
 const meta = JSON.parse(readFileSync(metaPath, "utf8"));
 rmSync(metaPath);
-const bundled = new Set();
+// The exact installed directories the bundle read from (one per bundled
+// version — two versions of a package can both be bundled). Taken from the
+// metafile paths rather than looked up by name, so a stale version left in the
+// pnpm store can never be reported in place of the bundled one.
+const bundled = new Map(); // dir -> package name
 for (const input of Object.keys(meta.inputs)) {
-  const m = input.match(/node_modules\/(?:\.pnpm\/[^/]+\/node_modules\/)?((?:@[^/]+\/)?[^/]+)/);
-  if (m) bundled.add(m[1]);
+  const m = input.match(
+    /^(.*?node_modules\/(?:\.pnpm\/[^/]+\/node_modules\/)?((?:@[^/]+\/)?[^/]+))\//,
+  );
+  if (m) bundled.set(join(cliDir, m[1]), m[2]); // metafile paths are relative to packages/cli
 }
 
 // 2. Declared runtime dependencies of the published package (installed from
@@ -37,8 +43,7 @@ function findPackageDir(name) {
   return dir ? join(base, dir, "node_modules", name) : null;
 }
 
-function licenseInfo(name) {
-  const dir = findPackageDir(name);
+function licenseInfo({ name, dir }) {
   if (!dir) throw new Error(`cannot locate installed package: ${name}`);
   const pkg = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
   const licenseFile = readdirSync(dir).find((f) => /^licen[cs]e/i.test(f));
@@ -46,10 +51,13 @@ function licenseInfo(name) {
   return { name, version: pkg.version, license: pkg.license ?? "UNKNOWN", text };
 }
 
-function section(title, note, names) {
+// packages: { name, dir }[]
+function section(title, note, packages) {
   const lines = [`## ${title}`, "", note, ""];
-  for (const name of [...names].sort()) {
-    const info = licenseInfo(name);
+  const infos = packages
+    .map(licenseInfo)
+    .sort((a, b) => a.name.localeCompare(b.name) || a.version.localeCompare(b.version));
+  for (const info of infos) {
     lines.push(`### ${info.name}@${info.version} — ${info.license}`, "");
     if (info.text) {
       lines.push("```", info.text, "```", "");
@@ -71,12 +79,12 @@ const out = [
   ...section(
     "Bundled packages",
     "Compiled into the published `dist/` bundle (redistributed with this software).",
-    bundled,
+    [...bundled].map(([dir, name]) => ({ name, dir })),
   ),
   ...section(
     "Runtime dependencies",
     "Declared dependencies installed from the npm registry alongside this package.",
-    runtime,
+    runtime.map((name) => ({ name, dir: findPackageDir(name) })),
   ),
 ].join("\n");
 
