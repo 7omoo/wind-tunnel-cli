@@ -2,6 +2,7 @@
 // the pool source (reads). The persona columns mirror the RawPersona shape.
 
 import type { DuckDBConnection } from "@duckdb/node-api";
+import type { RawPersona } from "../types";
 
 export const POOL_DDL = [
   `CREATE TABLE IF NOT EXISTS persona (
@@ -33,7 +34,8 @@ export async function ensurePoolSchema(connection: DuckDBConnection): Promise<vo
 }
 
 // Column list in table order — reused by ingest INSERTs and pool SELECTs so
-// the two can never disagree on ordering.
+// the two can never disagree on ordering. `satisfies` keeps every column a
+// RawPersona field; a test keeps it equal to the DDL above.
 export const PERSONA_COLUMNS = [
   "uuid",
   "country",
@@ -47,4 +49,4 @@ export const PERSONA_COLUMNS = [
   "locality",
   "professional_persona",
   "persona",
-] as const;
+] as const satisfies readonly (keyof RawPersona)[];

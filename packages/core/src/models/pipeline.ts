@@ -5,14 +5,9 @@
 // rejects it on them).
 
 import type { LanguageModel } from "ai";
-import { getModelCapabilities } from "../ollama/client";
+import { DEFAULT_OLLAMA_URL, getModelCapabilities } from "../ollama/client";
 import type { ModelRole, ModelRoles } from "./defaults";
-import {
-  DEFAULT_OLLAMA_URL,
-  type ProviderSettings,
-  parseModelSpec,
-  resolveModel,
-} from "./registry";
+import { type ProviderSettings, parseModelSpec, resolveModel } from "./registry";
 import type { PipelineStage } from "./stages";
 
 export type PipelineModels = {

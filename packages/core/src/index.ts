@@ -27,7 +27,6 @@ export type { RegionOption } from "./data/regions";
 export {
   DEFAULT_SITUATION,
   type LengthPolicy,
-  SITUATION_CODES,
   SITUATIONS,
   type SituationMeta,
 } from "./data/situations";
@@ -35,7 +34,6 @@ export {
 export { DEFAULT_MODEL_ROLES, type ModelRole, type ModelRoles } from "./models/defaults";
 export { createPipelineModels, type PipelineModels } from "./models/pipeline";
 export {
-  DEFAULT_OLLAMA_URL,
   type ModelProvider,
   type ParsedModelSpec,
   type ProviderSettings,
@@ -46,6 +44,7 @@ export { DEFAULT_KEEP_ALIVE, type PipelineStage, STAGE_NUM_CTX } from "./models/
 
 // Ollama daemon probes & diagnosis
 export {
+  DEFAULT_OLLAMA_URL,
   getOllamaVersion,
   type InstalledModel,
   isModelInstalled,
@@ -106,22 +105,15 @@ export type {
 } from "./run/types";
 // Schemas & enums
 export {
-  alternativeSuggestionSchema,
-  alternativeSuggestionsSchema,
   CONTEXT_MAX_CHARS,
   countrySchema,
   defaultPersonaLang,
-  flameResultSchema,
-  groupProfileSchema,
-  llmOpinionScoreSchema,
-  llmTriggerSchema,
-  minorityReportSchema,
   normalizeOutputLang,
   outputLangName,
   outputLangSchema,
   personaLangSchema,
-  propositionsSchema,
   riskLevelSchema,
+  severitySchema,
   situationSchema,
   topicSchema,
 } from "./schemas";
@@ -131,8 +123,6 @@ export type {
   AlternativeSuggestions,
   Country,
   FlameResult,
-  FlameResultCore,
-  FlameResultExtras,
   Opinion,
   OpinionAxis,
   OpinionCluster,
@@ -149,12 +139,12 @@ export type {
   PlotPoint,
   RawPersona,
   RiskLevel,
+  Severity,
   Situation,
   Trigger,
 } from "./types";
 
 // Utilities
-export { opinionsToCsv, safeFilename } from "./util/csv";
-export { parseLLMJson, parseLLMJsonChecked } from "./util/llm-json";
+export { opinionsToCsv } from "./util/csv";
 export { clampPromptInput, escapeForPrompt, quoteUntrusted } from "./util/sanitize";
 export { shuffle } from "./util/shuffle";

@@ -7,7 +7,7 @@ import { generateText, type LanguageModel, Output } from "ai";
 import { z } from "zod";
 import { stageTimeoutSignal } from "../models/stages";
 import { postContentBlock } from "../prompts/post";
-import { outputLangName } from "../schemas";
+import { outputLangName, severitySchema } from "../schemas";
 import type {
   AlternativeSuggestions,
   FlameResult,
@@ -23,7 +23,7 @@ const suggestGenSchema = z.object({
         text: z.string(),
         strategy: z.string(),
         targetTriggers: z.array(z.number().int().min(0)),
-        estimatedRiskReduction: z.enum(["High", "Medium", "Low"]),
+        estimatedRiskReduction: severitySchema,
         reasoning: z.string(),
       }),
     )

@@ -15,7 +15,7 @@ import { z } from "zod";
 import { averageScore, percentages, sentimentCounts } from "../analysis/scoring";
 import { stageTimeoutSignal } from "../models/stages";
 import { postContentBlock } from "../prompts/post";
-import { outputLangName } from "../schemas";
+import { outputLangName, riskLevelSchema, severitySchema } from "../schemas";
 import type { FlameResult, Opinion, OpinionScore, OutputLang, Trigger } from "../types";
 import { clampPromptInput } from "../util/sanitize";
 import { mapWaves } from "./batch";
@@ -143,14 +143,14 @@ export async function scoreOpinions(opts: ScoreOptions): Promise<ScoreResult> {
 
 const verdictGenSchema = z.object({
   inflammationIndex: z.number().min(0).max(100),
-  riskLevel: z.enum(["Low", "Medium", "High", "Critical"]),
+  riskLevel: riskLevelSchema,
   summary: z.string(),
   triggers: z
     .array(
       z.object({
         expression: z.string(),
         offendedSegment: z.string(),
-        severity: z.enum(["High", "Medium", "Low"]),
+        severity: severitySchema,
         count: z.number().min(0),
         sampleOpinionIds: z.array(z.string()),
       }),

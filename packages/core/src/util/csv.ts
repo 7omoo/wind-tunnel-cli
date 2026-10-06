@@ -63,12 +63,3 @@ export function opinionsToCsv(
   // UTF-8 BOM so Excel doesn't mangle non-ASCII text
   return `\uFEFF${lines.join("\r\n")}\r\n`;
 }
-
-// Filesystem/HTTP-safe filename: keep ASCII alphanumerics plus - _ only.
-export function safeFilename(stem: string, ext: string): string {
-  const cleaned = stem
-    .replace(/[^A-Za-z0-9_-]/g, "-")
-    .replace(/-+/g, "-")
-    .slice(0, 60);
-  return `${cleaned || "export"}.${ext}`;
-}

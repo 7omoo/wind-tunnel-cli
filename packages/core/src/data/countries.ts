@@ -3,7 +3,7 @@
 // To add a country: extend countrySchema, regions.ts, and this file together
 // (plus a dataset preset for `personas pull`).
 
-import type { Country } from "../schemas";
+import { type Country, countrySchema } from "../schemas";
 import {
   BE_REGIONS,
   BR_STATES,
@@ -16,8 +16,9 @@ import {
   VN_REGIONS,
 } from "./regions";
 
-// Display order for country selection.
-export const COUNTRY_CODES: readonly Country[] = ["jp", "usa", "in", "br", "fr", "kr", "vn", "be"];
+// Display order for country selection: the countrySchema enum order, derived so
+// the two can never disagree.
+export const COUNTRY_CODES: readonly Country[] = countrySchema.options;
 
 export const COUNTRY_LABELS: Record<Country, string> = {
   jp: "Japan",
