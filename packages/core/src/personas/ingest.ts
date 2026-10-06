@@ -87,9 +87,9 @@ export async function pullCountryPool(opts: {
 
     let filesRead = 0;
     for (const [index, file] of files.entries()) {
-      // Stop early once every observed region is full — but only when the
-      // expected-region set is known and fully present (jp/usa). Relaxed-mode
-      // countries read one more file and stop on a zero-row insert instead.
+      // Stop early once every expected region is full (jp/usa; see
+      // expectedRegionsFull). Relaxed-mode countries read one more file and
+      // stop on a zero-row insert instead.
       const before = await countRows(connection, "stage");
       await connection.run(`
         INSERT INTO stage
@@ -118,12 +118,8 @@ export async function pullCountryPool(opts: {
       });
 
       if (after === before) break; // nothing new — every reachable region is full
-      if (preset.expectedRegions.length > 0) {
-        const known = new Set(regions.map((r) => String(r[0])));
-        const allExpectedSeen = preset.expectedRegions.every((r) => known.has(r));
-        const minCount = regions.reduce((min, r) => Math.min(min, Number(r[1])), Infinity);
-        if (allExpectedSeen && minCount >= cap) break;
-      }
+      const counts = new Map(regions.map((r) => [String(r[0]), Number(r[1])]));
+      if (expectedRegionsFull(counts, preset.expectedRegions, cap)) break;
     }
 
     // ── validation before the swap ──
@@ -189,6 +185,19 @@ export async function pullCountryPool(opts: {
   } finally {
     connection.closeSync();
   }
+}
+
+// Early-stop rule: every expected region has reached the cap. Only expected
+// regions count — extra regions (USA's PR) are small and may never fill, and
+// waiting on them would read every file. Presets without an expected-region
+// list (relaxed mode) never stop here; they stop on a zero-row file instead.
+export function expectedRegionsFull(
+  counts: ReadonlyMap<string, number>,
+  expectedRegions: readonly string[],
+  cap: number,
+): boolean {
+  if (expectedRegions.length === 0) return false;
+  return expectedRegions.every((region) => (counts.get(region) ?? 0) >= cap);
 }
 
 async function countRows(connection: DuckDBConnection, table: string): Promise<number> {
