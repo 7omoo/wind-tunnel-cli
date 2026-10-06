@@ -14,6 +14,7 @@
 import { createGoogleGenerativeAI, type GoogleGenerativeAIProvider } from "@ai-sdk/google";
 import type { LanguageModel } from "ai";
 import { createOllama, type OllamaProvider } from "ai-sdk-ollama";
+import { DEFAULT_OLLAMA_URL } from "../ollama/client";
 import { DEFAULT_KEEP_ALIVE, type PipelineStage, STAGE_NUM_CTX } from "./stages";
 
 export type ModelProvider = "ollama" | "gemini";
@@ -35,8 +36,6 @@ export function parseModelSpec(spec: string): ParsedModelSpec {
   if (provider === "gemini" || provider === "google") return { provider: "gemini", name };
   throw new Error(`Unknown model provider "${provider}" in "${spec}" (supported: ollama, gemini)`);
 }
-
-export const DEFAULT_OLLAMA_URL = "http://localhost:11434";
 
 export type ProviderSettings = {
   // Ollama daemon base URL. Defaults to the local daemon.

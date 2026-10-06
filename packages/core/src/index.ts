@@ -34,7 +34,6 @@ export {
 export { DEFAULT_MODEL_ROLES, type ModelRole, type ModelRoles } from "./models/defaults";
 export { createPipelineModels, type PipelineModels } from "./models/pipeline";
 export {
-  DEFAULT_OLLAMA_URL,
   type ModelProvider,
   type ParsedModelSpec,
   type ProviderSettings,
@@ -45,6 +44,7 @@ export { DEFAULT_KEEP_ALIVE, type PipelineStage, STAGE_NUM_CTX } from "./models/
 
 // Ollama daemon probes & diagnosis
 export {
+  DEFAULT_OLLAMA_URL,
   getOllamaVersion,
   type InstalledModel,
   isModelInstalled,
