@@ -10,6 +10,12 @@ import type { ModelRole, ModelRoles } from "./defaults";
 import { type ProviderSettings, parseModelSpec, resolveModel } from "./registry";
 import type { PipelineStage } from "./stages";
 
+// The capability probe decides whether `think: false` is sent for the whole run
+// (~100+ calls), so it gets far longer than the doctor-style probe: a daemon
+// still loading a model can take seconds to answer /api/show, and a timeout
+// here would silently leave thinking on for every call.
+const CAPABILITY_PROBE_TIMEOUT_MS = 10_000;
+
 export type PipelineModels = {
   role(role: ModelRole, stage: PipelineStage): LanguageModel;
 };
@@ -30,7 +36,7 @@ export async function createPipelineModels(
   const baseUrl = settings.ollamaBaseUrl ?? DEFAULT_OLLAMA_URL;
   await Promise.all(
     [...ollamaNames].map(async (name) => {
-      const caps = await getModelCapabilities(name, baseUrl);
+      const caps = await getModelCapabilities(name, baseUrl, CAPABILITY_PROBE_TIMEOUT_MS);
       if (caps?.includes("thinking")) thinkingModels.add(name);
     }),
   );

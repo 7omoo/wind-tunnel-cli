@@ -19,7 +19,7 @@ import { diagnoseOllama } from "../src/ollama/doctor";
 // Nothing listens on port 9 (discard) — a reliable "unreachable" target.
 const UNREACHABLE = "http://127.0.0.1:9";
 
-type Route = { status?: number; body: unknown };
+type Route = { status?: number; body: unknown; delayMs?: number };
 let routes: Record<string, Route> = {};
 let server: Server;
 let baseUrl: string;
@@ -27,8 +27,10 @@ let baseUrl: string;
 beforeAll(async () => {
   server = createServer((req, res) => {
     const route = routes[`${req.method} ${req.url}`];
-    res.writeHead(route?.status ?? (route ? 200 : 404), { "Content-Type": "application/json" });
-    res.end(JSON.stringify(route?.body ?? { error: "not found" }));
+    setTimeout(() => {
+      res.writeHead(route?.status ?? (route ? 200 : 404), { "Content-Type": "application/json" });
+      res.end(JSON.stringify(route?.body ?? { error: "not found" }));
+    }, route?.delayMs ?? 0);
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -94,6 +96,12 @@ describe("Ollama probes", () => {
     expect(await getModelCapabilities("m", baseUrl)).toBeNull();
     routes["POST /api/show"] = { status: 404, body: {} };
     expect(await getModelCapabilities("m", baseUrl)).toBeNull();
+  });
+
+  it("lets the caller allow a slow daemon more time for the capability probe", async () => {
+    routes["POST /api/show"] = { body: { capabilities: ["thinking"] }, delayMs: 300 };
+    expect(await getModelCapabilities("m", baseUrl, 100)).toBeNull();
+    expect(await getModelCapabilities("m", baseUrl, 2000)).toEqual(["thinking"]);
   });
 
   it("diagnoses role models against what is installed", async () => {
