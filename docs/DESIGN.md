@@ -149,10 +149,11 @@ differences from Ollama shape the integration:
   for JSON calls only; non-thinking models are recommended.
 - After any unstructured request, the next structured request is answered
   without the schema applied (the following one conforms) — in a run, the
-  first score call right after react. A second middleware
-  (`lmstudio/structured-output-retry.ts`, TODO to remove) regenerates once when
-  a JSON answer is not JSON or lacks the schema's required keys; zod still
-  validates the result.
+  first score call right after react
+  ([lmstudio-bug-tracker#2476](https://github.com/lmstudio-ai/lmstudio-bug-tracker/issues/2476)).
+  A second middleware (`lmstudio/structured-output-retry.ts`, TODO to remove)
+  regenerates once when a JSON answer is not JSON or lacks the schema's
+  required keys; zod still validates the result.
 - Each new schema costs a grammar compile on first use (up to ~60 s observed),
   which is one reason score entries map by position rather than per-batch id
   enums (§4).
