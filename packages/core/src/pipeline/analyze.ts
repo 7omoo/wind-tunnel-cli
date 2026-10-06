@@ -12,10 +12,10 @@
 
 import { generateText, type LanguageModel, Output } from "ai";
 import { z } from "zod";
-import { averageScore, percentages, sentimentCounts } from "../analysis/scoring";
+import { averageScore, sentimentCounts } from "../analysis/scoring";
 import { ANALYSIS_TEMPERATURE, stageTimeoutSignal } from "../models/stages";
-import { postContentBlock } from "../prompts/post";
-import { outputLangName, riskLevelSchema, severitySchema } from "../schemas";
+import { scoreSystemPrompt, scoreUserPrompt, verdictPrompts } from "../prompts/analyze";
+import { riskLevelSchema, severitySchema } from "../schemas";
 import type { FlameResult, Opinion, OpinionScore, OutputLang, Trigger } from "../types";
 import { clampPromptInput } from "../util/sanitize";
 import { chunk, mapWaves } from "./batch";
@@ -40,22 +40,13 @@ export type ScoreResult = { scores: OpinionScore[]; warnings: string[] };
 export async function scoreOpinions(opts: ScoreOptions): Promise<ScoreResult> {
   const topic = clampPromptInput(opts.topic);
   const batchSize = opts.batchSize ?? SCORE_BATCH_SIZE;
-  const lang = outputLangName(opts.outputLang);
   const batches = chunk(opts.opinions, batchSize);
 
   // The model never writes a signed number. Small local models mis-sign
   // negative ranges (observed: reasons saying "clear criticism" scored +25),
   // so the schema takes a stance enum plus an unsigned intensity and the sign
   // is composed in code — a sign error is structurally impossible.
-  //
-  // Calibration ("boredom is not backlash"): dismissive/bored/pointless
-  // reactions are neutral, not critical; without that, harmless-but-bland
-  // posts saturate the verdict (observed: a weather question at 95/100 HIGH).
-  const system = `You are a sentiment scorer for public reactions to a post/ad. For EVERY reaction, classify its stance toward the post and rate the intensity, with a one-sentence reason in ${lang}.
-- stance "critical": the reaction criticizes, objects to, or is offended by the post
-- stance "neutral": indifferent, bored, ambivalent, or "this is pointless" — dismissiveness is NOT criticism
-- stance "favorable": the reaction approves of or supports the post
-- intensity 20-100: how strongly the stance is expressed (mild 20-50, strong 60-100; ignored for neutral)`;
+  const system = scoreSystemPrompt(opts.outputLang);
 
   const settled = await mapWaves(
     batches,
@@ -76,13 +67,12 @@ export async function scoreOpinions(opts: ScoreOptions): Promise<ScoreResult> {
           )
           .length(batch.length),
       });
-      const reactionsBlock = batch.map((o) => `[${o.personaId}] ${o.text}`).join("\n");
       const { output } = await generateText({
         model: opts.model,
         temperature: ANALYSIS_TEMPERATURE,
         output: Output.object({ schema }),
         system,
-        prompt: `${postContentBlock(topic, false)}\n\nReactions:\n${reactionsBlock}\n\nScore every reaction.`,
+        prompt: scoreUserPrompt(topic, batch),
         abortSignal: stageTimeoutSignal("score"),
       });
       // Compose the signed score. Non-neutral intensities clamp to [20, 100] so
@@ -170,8 +160,6 @@ export type VerdictOptions = {
 
 export async function analyzeVerdict(opts: VerdictOptions): Promise<FlameResult> {
   const topic = clampPromptInput(opts.topic);
-  const ja = opts.outputLang === "ja";
-  const langName = outputLangName(opts.outputLang);
 
   const scoreById = new Map(opts.scores.map((s) => [s.personaId, s.score]));
   const scored: ScoredOpinion[] = opts.opinions.map((o) => ({
@@ -184,39 +172,17 @@ export async function analyzeVerdict(opts: VerdictOptions): Promise<FlameResult>
     random: opts.random,
   });
 
-  const counts = sentimentCounts(opts.scores);
-  const pct = percentages(counts, opts.scores.length);
-  const avg = averageScore(opts.scores);
-  const statsBlock = ja
-    ? `全 ${opts.scores.length} 件の反応の集計: 批判的 ${counts.critical} 件 (${pct.critical}%) / 中立 ${counts.neutral} 件 (${pct.neutral}%) / 好意的 ${counts.favorable} 件 (${pct.favorable}%)。平均スコア ${avg} (-100〜+100)。`
-    : `Aggregate over all ${opts.scores.length} reactions: critical ${counts.critical} (${pct.critical}%), neutral ${counts.neutral} (${pct.neutral}%), favorable ${counts.favorable} (${pct.favorable}%). Mean score ${avg} on -100..+100.`;
-  const sampleNote =
-    sample.length < opts.opinions.length
-      ? ja
-        ? `以下は全 ${opts.opinions.length} 件から層化抽出した ${sample.length} 件 (批判的な端・好意的な端を重点、スコア昇順)。`
-        : `Below is a stratified sample of ${sample.length} out of ${opts.opinions.length} reactions (weighted toward both extremes, sorted by score ascending).`
-      : ja
-        ? `以下は全 ${sample.length} 件の反応 (スコア昇順)。`
-        : `Below are all ${sample.length} reactions (sorted by score ascending).`;
-
-  const reactionsBlock = sample
-    .map((s) => `[${s.opinion.personaId}] (score ${s.score}) ${s.opinion.text}`)
-    .join("\n");
-
-  const system = ja
-    ? `あなたは炎上リスク分析の専門家です。投稿・広告文への反応から炎上リスクを評価します。すべて日本語で出力してください。`
-    : `You are an expert in backlash risk analysis. Assess the risk of public backlash from reactions to a post/ad. Output everything in ${langName}.`;
-  const instructions = ja
-    ? `評価の指針:
-- inflammationIndex: 0-100 の炎上指数 (0=安全、100=炎上確実)。集計統計と反応の内容の両方を根拠にすること
-- 炎上とは「怒り・不快感・道徳的反発が拡散する」ことである。反応の大半が無関心・退屈・「意味がない」という冷めた評価で、誰も傷つけず怒らせてもいないなら、批判的な反応が多くても指数は低く (25 以下に) すること。退屈は炎上ではない
-- triggers: 何が・誰を不快にさせるか。実際に感情的・道徳的な反発を起こしている表現だけを挙げること (単に「つまらない」と言われた表現は trigger ではない)。expression は問題の表現、offendedSegment は不快に感じる層、sampleOpinionIds は根拠となる反応の personaId
-- safeVersion: 元の意図を保ちつつ炎上リスクを下げた修正版`
-    : `Guidance:
-- inflammationIndex: 0-100 backlash index (0=safe, 100=certain backlash), grounded in both the aggregate statistics and the reactions
-- Backlash means spreading anger, offense, or moral objection. If most reactions are indifference, boredom, or "this is pointless" — with nobody actually offended — the index must stay low (25 or less) even when many reactions are negative. Boring is not backlash
-- triggers: what offends whom — only wording that provokes genuine emotional or moral pushback (being called dull does not make an expression a trigger). expression = the problematic wording, offendedSegment = who it offends, sampleOpinionIds = personaIds of supporting reactions
-- safeVersion: a revision that preserves the original intent while lowering the risk`;
+  const { system, prompt } = verdictPrompts({
+    topic,
+    outputLang: opts.outputLang,
+    stats: {
+      total: opts.scores.length,
+      counts: sentimentCounts(opts.scores),
+      average: averageScore(opts.scores),
+    },
+    opinionCount: opts.opinions.length,
+    sample,
+  });
 
   const { output } = await generateText({
     model: opts.model,
@@ -224,7 +190,7 @@ export async function analyzeVerdict(opts: VerdictOptions): Promise<FlameResult>
     abortSignal: stageTimeoutSignal("verdict"),
     output: Output.object({ schema: verdictGenSchema }),
     system,
-    prompt: `${postContentBlock(topic, ja)}\n\n${statsBlock}\n\n${sampleNote}\n${reactionsBlock}\n\n${instructions}`,
+    prompt,
   });
 
   // triggerAssignment: personaId -> trigger index, for coloring reactions.

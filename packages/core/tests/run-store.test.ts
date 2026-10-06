@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { newRunId } from "../src/run/paths";
+import { isRunId, newRunId } from "../src/run/paths";
 import { RunStore } from "../src/run/store";
 import type { RunInput } from "../src/run/types";
 import type { Opinion } from "../src/types";
@@ -51,6 +51,13 @@ describe("newRunId", () => {
   it("is sortable and filesystem-safe", () => {
     const id = newRunId(new Date("2026-08-17T14:35:12"));
     expect(id).toMatch(/^20260817-143512-[a-z0-9]{4}$/);
+  });
+
+  it("is recognized by isRunId, unlike other names", () => {
+    expect(isRunId(newRunId())).toBe(true);
+    for (const name of ["notes.txt", "scratch", ".tmp", "20260817-143512"]) {
+      expect(isRunId(name)).toBe(false);
+    }
   });
 });
 

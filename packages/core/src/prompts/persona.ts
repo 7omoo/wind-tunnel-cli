@@ -3,8 +3,8 @@
 // analysis output language. ja has dedicated Japanese prompts; every other
 // language shares the English scaffold plus "Respond in {language name}".
 // Cultural context comes from the persona prose; this layer only decides what
-// language the reaction is written in. Analysis prompts (verdict, cluster names,
-// suggestions) live with their pipeline stages and use the output language instead.
+// language the reaction is written in. Analysis prompts (prompts/analyze,
+// prompts/cluster, prompts/suggest) use the output language instead.
 
 import { PERSONA_LANG_CODES, PERSONA_LANGUAGES } from "../data/languages";
 import type { PersonaLang, Situation } from "../types";

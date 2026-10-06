@@ -100,13 +100,14 @@ export function isModelInstalled(installed: InstalledModel[], name: string): boo
 export async function getModelCapabilities(
   name: string,
   baseUrl = DEFAULT_OLLAMA_URL,
+  timeoutMs = PROBE_TIMEOUT_MS,
 ): Promise<string[] | null> {
   try {
     const res = await fetch(url(baseUrl, "/api/show"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ model: name }),
-      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!res.ok) return null;
     const body = (await res.json()) as { capabilities?: unknown };
