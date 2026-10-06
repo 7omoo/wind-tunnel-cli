@@ -11,6 +11,7 @@ import {
   detectConsensus,
   detectDivision,
   partitionVotes,
+  TOP_PROPOSITIONS,
 } from "../analysis/clustering";
 import type { Opinion, OpinionClusterResult, OutputLang } from "../types";
 import { clampPromptInput } from "../util/sanitize";
@@ -137,8 +138,8 @@ export async function clusterOpinions(
     propositions,
     clusters,
     plotData,
-    consensus: consensus.slice(0, 5),
-    divisive: divisive.slice(0, 5),
+    consensus: consensus.slice(0, TOP_PROPOSITIONS),
+    divisive: divisive.slice(0, TOP_PROPOSITIONS),
     xAxisLabel: axes[0]?.label ?? "PC1",
     yAxisLabel: axes[1]?.label ?? "PC2",
     axes,

@@ -181,6 +181,13 @@ Return exactly ${opts.k} labels, in PC order.`,
 
 // === Group profiles + minority report (analysis model, one combined call) ===
 
+// A centroid value (mean vote in -1..1) beyond this reads as agree/disagree in
+// the group's stance pattern; inside it, neutral.
+const CENTROID_STANCE_THRESHOLD = 0.3;
+
+// Member opinions shown to the model per group when writing its profile.
+const PROFILE_SAMPLE_OPINIONS = 15;
+
 export async function generateGroupProfilesAndMinority(opts: {
   clusters: OpinionCluster[];
   propositions: OpinionClusterProposition[];
@@ -201,12 +208,17 @@ export async function generateGroupProfilesAndMinority(opts: {
       const stanceDescription = propositions
         .map((p, j) => {
           const val = cluster.centroid[j] ?? 0;
-          const stance = val > 0.3 ? "agree" : val < -0.3 ? "disagree" : "neutral";
+          const stance =
+            val > CENTROID_STANCE_THRESHOLD
+              ? "agree"
+              : val < -CENTROID_STANCE_THRESHOLD
+                ? "disagree"
+                : "neutral";
           return `- "${p.text}": ${stance} (${val.toFixed(2)})`;
         })
         .join("\n");
       const memberOpinions = cluster.memberIds
-        .slice(0, 15)
+        .slice(0, PROFILE_SAMPLE_OPINIONS)
         .map((id) => opinionMap.get(id))
         .filter(Boolean)
         .map((t, i) => `${i + 1}. ${t}`)

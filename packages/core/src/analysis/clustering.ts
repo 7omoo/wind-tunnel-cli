@@ -83,6 +83,12 @@ export function silhouette(data: number[][], labels: number[]): number {
   return totalS / n;
 }
 
+// How many consensus / divisive / bridging propositions a result keeps.
+export const TOP_PROPOSITIONS = 5;
+
+// A bridging proposition needs more than this agree rate (0..1) in every group.
+const BRIDGING_MIN_SUPPORT = 0.3;
+
 // Upper bound on the number of opinion groups tried by k-means.
 export const MAX_K = 5;
 
@@ -199,8 +205,8 @@ export function detectDivision(
 }
 
 /**
- * Bridging propositions (min support > 0.3 in every group).
- * bridgingScore = minGroupSupport * meanGroupSupport, descending, top 5.
+ * Bridging propositions (support above BRIDGING_MIN_SUPPORT in every group).
+ * bridgingScore = minGroupSupport * meanGroupSupport, descending, top TOP_PROPOSITIONS.
  */
 export function computeBridging(
   voteMatrix: number[][],
@@ -230,9 +236,9 @@ export function computeBridging(
   });
 
   return results
-    .filter((r) => r.minGroupSupport > 0.3)
+    .filter((r) => r.minGroupSupport > BRIDGING_MIN_SUPPORT)
     .sort((a, b) => b.bridgingScore - a.bridgingScore)
-    .slice(0, 5);
+    .slice(0, TOP_PROPOSITIONS);
 }
 
 export type MinorityDivergence = {
