@@ -7,6 +7,7 @@ import { createInterface } from "node:readline/promises";
 import { COUNTRY_CODES, COUNTRY_LABELS, DEFAULT_MODEL_ROLES } from "@wind-tunnel/core";
 import { stringify as stringifyToml } from "smol-toml";
 import { configFilePath, resolveConfig } from "../config";
+import { renderError } from "../errors";
 import { paint, useColor } from "../render/format";
 
 export async function initCommand(): Promise<number> {
@@ -69,9 +70,7 @@ export async function initCommand(): Promise<number> {
     process.stderr.write(`${paint("green", "✓", color)} wrote ${path}\n`);
     return 0;
   } catch (e) {
-    process.stderr.write(
-      `${paint("red", "✗", color)} ${e instanceof Error ? e.message : String(e)}\n`,
-    );
+    renderError(e, process.stderr);
     return 1;
   } finally {
     rl.close();
