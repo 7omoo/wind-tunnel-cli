@@ -241,6 +241,25 @@ export function computeBridging(
     .slice(0, TOP_PROPOSITIONS);
 }
 
+/**
+ * The n propositions with the largest |loading| on each of the first k
+ * principal components — the material the axis-label stage names each axis
+ * from (labelAxes).
+ */
+export function topPropositionsByAxis(
+  propositions: { text: string }[],
+  loadings: number[][],
+  k: number,
+  n = 3,
+): { text: string; loading: number }[][] {
+  return Array.from({ length: k }, (_, c) =>
+    propositions
+      .map((p, i) => ({ text: p.text, loading: loadings[i]?.[c] ?? 0 }))
+      .sort((a, b) => Math.abs(b.loading) - Math.abs(a.loading))
+      .slice(0, n),
+  );
+}
+
 export type MinorityDivergence = {
   propositionId: string;
   text: string;
