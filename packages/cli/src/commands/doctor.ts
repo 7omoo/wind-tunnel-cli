@@ -161,6 +161,6 @@ export async function runDoctor(flags: Pick<CliFlags, "host">): Promise<number> 
     });
   }
 
-  console.log(sections.map((s) => s.text).join("\n\n"));
+  process.stdout.write(`${sections.map((s) => s.text).join("\n\n")}\n`);
   return sections.every((s) => s.ok) ? 0 : 1;
 }
