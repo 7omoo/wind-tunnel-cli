@@ -3,11 +3,11 @@
 // most-critical first. Defaults to the latest run; `--group N` narrows to one
 // group. Plain stdout, so `wt-cli detail | less` pages naturally.
 
-import { classifySentiment, RunStore } from "@wind-tunnel/core";
+import { classifySentiment } from "@wind-tunnel/core";
 import { renderError } from "../errors";
 import { clip, displayWidth, paint, useColor, wrap } from "../render/format";
 import { groupStyle, personaMeta, SENTIMENT_STYLE } from "../render/theme";
-import { latestRunDir, resolveRunDir } from "../runs";
+import { openRun } from "../runs";
 
 // Stance percentage color: strong agreement green, strong disagreement red,
 // the contested middle stays gray.
@@ -27,9 +27,7 @@ export async function detailCommand(
   const w = Math.max(56, (stdout.columns ?? 78) - 2);
 
   try {
-    const dir = idOrPath ? await resolveRunDir(idOrPath) : await latestRunDir();
-    const store = await RunStore.open(dir);
-    const input = await store.readInput();
+    const { store, input } = await openRun(idOrPath);
     const opinions = await store.readOpinions();
     const scores = (await store.readScores())?.scores ?? [];
     const cluster = (await store.readCluster()) ?? null;

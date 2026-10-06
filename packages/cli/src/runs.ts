@@ -3,7 +3,7 @@
 
 import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { runsRoot } from "@wind-tunnel/core";
+import { type RunInput, RunStore, runsRoot } from "@wind-tunnel/core";
 
 export async function resolveRunDir(idOrPath: string): Promise<string> {
   const candidates = [join(runsRoot(), idOrPath), idOrPath];
@@ -32,4 +32,12 @@ export async function latestRunDir(): Promise<string> {
     .at(-1);
   if (!latest) throw new Error(`no runs yet (${runsRoot()}) — start one with: wt-cli run "..."`);
   return join(runsRoot(), latest);
+}
+
+// Opens a run by id or path (the latest run when omitted) and reads its input —
+// the common first step of every command that works on an existing run.
+export async function openRun(idOrPath?: string): Promise<{ store: RunStore; input: RunInput }> {
+  const dir = idOrPath ? await resolveRunDir(idOrPath) : await latestRunDir();
+  const store = await RunStore.open(dir);
+  return { store, input: await store.readInput() };
 }

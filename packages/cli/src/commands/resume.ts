@@ -3,20 +3,17 @@
 // (reproducibility); only connection settings (host, API key) come from the
 // current config.
 
-import { RunStore } from "@wind-tunnel/core";
 import { type CliFlags, loadConfig } from "../config";
 import { renderError } from "../errors";
 import { paint, useColor } from "../render/format";
-import { resolveRunDir } from "../runs";
+import { openRun } from "../runs";
 import { executeAndRender, preflightModels } from "./run";
 
 export async function resumeCommand(idOrPath: string, flags: CliFlags): Promise<number> {
   const stderr = process.stderr;
   const color = useColor(stderr);
   try {
-    const dir = await resolveRunDir(idOrPath);
-    const store = await RunStore.open(dir);
-    const input = await store.readInput();
+    const { store, input } = await openRun(idOrPath);
     const cfg = await loadConfig(flags);
 
     const status = await store.readStatus();
