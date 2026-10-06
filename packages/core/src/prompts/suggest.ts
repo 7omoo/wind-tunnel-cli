@@ -2,6 +2,7 @@
 // that turns the cluster analysis and the verdict into rewrite options. The
 // stage owns the schema and the trigger-index clamping; this module the wording.
 
+import { isConsensus } from "../analysis/clustering";
 import { outputLangName } from "../schemas";
 import type { FlameResult, OpinionClusterResult, OutputLang } from "../types";
 import { escapeForPrompt } from "../util/sanitize";
@@ -21,9 +22,12 @@ export function suggestPrompts(opts: SuggestPromptInput): { system: string; prom
   const { cluster, verdict, topic } = opts;
 
   // All cluster/verdict text is model-generated upstream — escape before
-  // re-embedding (indirect prompt-injection defense).
+  // re-embedding (indirect prompt-injection defense). Consensus is re-checked:
+  // resume hands over cluster.json as saved, and runs written before
+  // isConsensus can list propositions the groups split on.
   const consensusBlock =
     cluster.consensus
+      .filter(isConsensus)
       .slice(0, 5)
       .map((c) => `- ${escapeForPrompt(c.text)} (${ja ? "合意度" : "agreement"}: ${c.score})`)
       .join("\n") || none;
