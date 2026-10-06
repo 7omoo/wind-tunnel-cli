@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildClusters,
   computeBridging,
   detectConsensus,
   detectDivision,
   findMinorityDivergence,
+  partitionVotes,
   silhouette,
 } from "../src/analysis/clustering";
 
@@ -175,5 +177,49 @@ describe("findMinorityDivergence", () => {
       3,
     );
     expect(result?.divergences.map((d) => d.propositionId)).toEqual(["p0", "p1", "p2"]);
+  });
+});
+
+describe("partitionVotes", () => {
+  it("separates two clear camps into two groups", () => {
+    const votes = [
+      ...Array.from({ length: 5 }, () => [1, 1, -1]),
+      ...Array.from({ length: 5 }, () => [-1, -1, 1]),
+    ];
+    const { k, labels } = partitionVotes(votes);
+    expect(k).toBe(2);
+    expect(new Set(labels.slice(0, 5)).size).toBe(1);
+    expect(labels[0]).not.toBe(labels[5]);
+  });
+
+  // Honesty rule: below SILHOUETTE_MIN a k >= 2 split is fabricated structure.
+  it("collapses a unanimous corpus to a single group", () => {
+    const { k, labels } = partitionVotes(Array.from({ length: 8 }, () => [1, 0, -1]));
+    expect(k).toBe(1);
+    expect(labels).toEqual(Array.from({ length: 8 }, () => 0));
+  });
+
+  it("uses a single group when there are too few rows to split", () => {
+    expect(partitionVotes([[1], [-1], [1]])).toEqual({ k: 1, labels: [0, 0, 0] });
+  });
+});
+
+describe("buildClusters", () => {
+  it("averages member votes into centroids and drops empty labels", () => {
+    // Label 1 is unused (k-means can leave a centroid without members).
+    const clusters = buildClusters(
+      [0, 0, 2],
+      3,
+      [
+        [1, -1],
+        [0, -1],
+        [-1, 1],
+      ],
+      ["a", "b", "c"],
+    );
+    expect(clusters).toEqual([
+      { id: 0, size: 2, centroid: [0.5, -1], memberIds: ["a", "b"] },
+      { id: 2, size: 1, centroid: [-1, 1], memberIds: ["c"] },
+    ]);
   });
 });
