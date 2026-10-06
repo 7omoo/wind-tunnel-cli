@@ -70,6 +70,7 @@ npm login                       # if `npm whoami` fails
 npm publish --auth-type=web     # 2FA is a security key (Touch ID): approve in the browser
 
 # only after `npm view wind-tunnel-cli@X.Y.Z version` answers
+npx -y wind-tunnel-cli@X.Y.Z --version   # must print X.Y.Z
 git push --follow-tags
 gh release create vX.Y.Z --generate-notes     # then edit: lead with output changes
 ```
@@ -86,6 +87,10 @@ exact version (`wind-tunnel-cli@X.Y.Z`, `--prefer-online`) to confirm.
 
 The README ships in the tarball (copied by `prepack`, like the license files),
 so the npm page shows it; check it appears in the dry run's file list.
+
+`prepack` also rebuilds `dist/`. The bundle bakes in the manifest version at
+build time, and the build above runs before the bump, so without the rebuild
+every release would report the previous version (0.2.1 through 0.2.3 did).
 
 Notes:
 
