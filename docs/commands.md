@@ -111,12 +111,40 @@ output_lang = "en"            # defaults to the pool country's language (jp -> j
 
 [ollama]
 host = "http://localhost:11434"
+
+[lmstudio]
+host = "http://localhost:1234"
 ```
 
 Environment variables: `WT_PROFILE`, `WT_MODEL_BULK`, `WT_MODEL_ANALYSIS`,
 `WT_MODEL_PREMIUM`, `WT_COUNTRY`, `WT_PERSONAS`, `WT_BATCH`, `WT_OUTPUT_LANG`,
-`WT_SITUATION`, `WT_OLLAMA_HOST` (or `OLLAMA_HOST`), `GEMINI_API_KEY`,
-`WT_DEBUG` (set to 1 for full stack traces and version info on errors).
+`WT_SITUATION`, `WT_OLLAMA_HOST` (or `OLLAMA_HOST`), `WT_LMSTUDIO_HOST`,
+`GEMINI_API_KEY`, `WT_DEBUG` (set to 1 for full stack traces and version info
+on errors).
+
+### Using LM Studio instead of Ollama
+
+Any role can point at a model served by [LM Studio](https://lmstudio.ai) with
+the `lmstudio:` provider and the model id LM Studio shows (`lms ls`):
+
+```
+lms get qwen/qwen3-4b-2507                 # once
+lms server start
+lms load qwen/qwen3-4b-2507 -c 32768       # context is fixed at load time
+WT_MODEL_BULK=lmstudio:qwen/qwen3-4b-2507 \
+WT_MODEL_ANALYSIS=lmstudio:qwen/qwen3-4b-2507 \
+WT_MODEL_PREMIUM=lmstudio:qwen/qwen3-4b-2507 wt-cli run "draft copy..."
+```
+
+- **Load with at least 32768 context.** LM Studio sets context when a model is
+  loaded (its default is often 4096), unlike Ollama where each stage sizes it
+  per request. `run` and `doctor` check this and print the `lms load` command.
+- **Prefer non-thinking models** such as `qwen/qwen3-4b-2507`. LM Studio
+  currently ignores requests to turn thinking off
+  ([lmstudio-bug-tracker#1990](https://github.com/lmstudio-ai/lmstudio-bug-tracker/issues/1990)),
+  so thinking models (Qwen3.5, …) are very slow on persona reactions. Their
+  JSON stages still work through a workaround that is removed once the bug is
+  fixed.
 
 ## Run artifacts
 

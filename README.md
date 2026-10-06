@@ -78,6 +78,9 @@ brew install ollama && brew services start ollama   # macOS (or the desktop app)
 ollama pull qwen3:8b && ollama pull qwen3:14b       # role models (one-time, ~15 GB)
 ```
 
+Prefer [LM Studio](https://lmstudio.ai)? Any role can use an `lmstudio:` model
+instead — see [Using LM Studio](docs/commands.md#using-lm-studio-instead-of-ollama).
+
 ## Quickstart
 
 ```

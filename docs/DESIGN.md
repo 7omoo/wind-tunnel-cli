@@ -107,7 +107,8 @@ Three roles, resolved from `provider:model` strings (same scheme as the original
 | `analysis` | verdict, propositions, group profiles | `ollama:qwen3:14b` (subject to eval) |
 | `premium` | suggest | same as analysis |
 
-Providers: `ollama:` (default), `gemini:` (hybrid), extensible to others.
+Providers: `ollama:` (default), `lmstudio:` (alternative local server),
+`gemini:` (hybrid), extensible to others.
 
 **Ollama access goes through a native provider, not the OpenAI-compat endpoint.**
 Two documented failure modes force this:
@@ -124,6 +125,20 @@ strict Zod generation schema, converted by the AI SDK), and `keep_alive`.
 Generation schemas live with their stages because most depend on the call
 (batch size, persona ids, cluster count); outputs are then mapped into the
 domain types in `types.ts`, with shared enums in `schemas.ts`.
+
+**LM Studio goes through its OpenAI-compatible endpoint** (`@ai-sdk/openai-compatible`
+with structured outputs) — unlike Ollama's compat path, LM Studio's enforces
+`response_format: json_schema`, and there is no native AI SDK provider. Two
+differences from Ollama shape the integration:
+
+- Context length is fixed when the model is loaded, not per request, so every
+  LM Studio model must be loaded with the largest stage budget
+  (`LMSTUDIO_MIN_CONTEXT`, from `STAGE_NUM_CTX`); `run` and `doctor` verify it.
+- Thinking cannot be turned off per request
+  ([lmstudio-bug-tracker#1990](https://github.com/lmstudio-ai/lmstudio-bug-tracker/issues/1990)),
+  and on structured calls the constrained answer lands in `reasoning_content`.
+  A middleware (`lmstudio/reasoning-workaround.ts`, TODO to remove) recovers it
+  for JSON calls only; non-thinking models are recommended.
 
 **Profiles** bundle the choices:
 
@@ -276,6 +291,9 @@ output_lang = "en"             # defaults to the pool country's language (jp -> 
 
 [ollama]
 host = "http://localhost:11434"
+
+[lmstudio]
+host = "http://localhost:1234"
 ```
 
 Reaction language is derived from the pool (country preset or dataset TOML) and is
@@ -290,7 +308,7 @@ cluster names, suggestions).
 | `wt-cli resume <run-id>` | continue an interrupted run from its checkpoint |
 | `wt-cli personas pull <code>` | ingest a preset pool from Hugging Face |
 | `wt-cli personas list` | show installed pools (count, version, ingest date) |
-| `wt-cli doctor` | Ollama reachability, models present, effective parallelism, disk |
+| `wt-cli doctor` | reachability and models present for the providers in use (Ollama: effective parallelism; LM Studio: loaded context) |
 | `wt-cli init` | interactive first-run: write config.toml, suggest pulls |
 
 `run` renders live progress (stage, opinions done/total, elapsed) and finishes

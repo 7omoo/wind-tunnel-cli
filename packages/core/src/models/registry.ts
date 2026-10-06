@@ -8,16 +8,24 @@
 //     ignores response_format json_schema. Structured output via the AI SDK's
 //     Output.object() maps onto it automatically.
 //
+// LM Studio has no native AI SDK provider; its OpenAI-compatible endpoint does
+// enforce response_format json_schema, so it goes through @ai-sdk/openai-compatible
+// with structured outputs on. Context length is fixed when the model is loaded
+// in LM Studio, not per request.
+//
 // Unknown providers fail loudly — a CLI should never silently fall back to a
 // different (possibly metered) provider.
 
 import { createGoogleGenerativeAI, type GoogleGenerativeAIProvider } from "@ai-sdk/google";
-import type { LanguageModel } from "ai";
+import { createOpenAICompatible, type OpenAICompatibleProvider } from "@ai-sdk/openai-compatible";
+import { type LanguageModel, wrapLanguageModel } from "ai";
 import { createOllama, type OllamaProvider } from "ai-sdk-ollama";
+import { DEFAULT_LMSTUDIO_URL } from "../lmstudio/client";
+import { reasoningAsJsonTextMiddleware } from "../lmstudio/reasoning-workaround";
 import { DEFAULT_OLLAMA_URL } from "../ollama/client";
 import { DEFAULT_KEEP_ALIVE, type PipelineStage, STAGE_NUM_CTX } from "./stages";
 
-export type ModelProvider = "ollama" | "gemini";
+export type ModelProvider = "ollama" | "lmstudio" | "gemini";
 
 export type ParsedModelSpec = { provider: ModelProvider; name: string };
 
@@ -33,13 +41,18 @@ export function parseModelSpec(spec: string): ParsedModelSpec {
     );
   }
   if (provider === "ollama") return { provider: "ollama", name };
+  if (provider === "lmstudio") return { provider: "lmstudio", name };
   if (provider === "gemini" || provider === "google") return { provider: "gemini", name };
-  throw new Error(`Unknown model provider "${provider}" in "${spec}" (supported: ollama, gemini)`);
+  throw new Error(
+    `Unknown model provider "${provider}" in "${spec}" (supported: ollama, lmstudio, gemini)`,
+  );
 }
 
 export type ProviderSettings = {
   // Ollama daemon base URL. Defaults to the local daemon.
   ollamaBaseUrl?: string;
+  // LM Studio server base URL (without /v1). Defaults to the local server.
+  lmstudioBaseUrl?: string;
   // Gemini API key (hybrid profile). Only required when a gemini: spec is resolved.
   geminiApiKey?: string;
 };
@@ -52,6 +65,20 @@ function ollamaProvider(baseUrl: string): OllamaProvider {
   if (!p) {
     p = createOllama({ baseURL: baseUrl });
     ollamaProviders.set(baseUrl, p);
+  }
+  return p;
+}
+
+const lmstudioProviders = new Map<string, OpenAICompatibleProvider>();
+function lmstudioProvider(baseUrl: string): OpenAICompatibleProvider {
+  let p = lmstudioProviders.get(baseUrl);
+  if (!p) {
+    p = createOpenAICompatible({
+      name: "lmstudio",
+      baseURL: `${baseUrl.replace(/\/$/, "")}/v1`,
+      supportsStructuredOutputs: true,
+    });
+    lmstudioProviders.set(baseUrl, p);
   }
   return p;
 }
@@ -89,6 +116,13 @@ export function resolveModel(
       keep_alive: DEFAULT_KEEP_ALIVE,
       ...(opts.think !== undefined ? { think: opts.think } : {}),
       ...(opts.stage ? { options: { num_ctx: STAGE_NUM_CTX[opts.stage] } } : {}),
+    });
+  }
+  if (parsed.provider === "lmstudio") {
+    const baseUrl = settings.lmstudioBaseUrl ?? DEFAULT_LMSTUDIO_URL;
+    return wrapLanguageModel({
+      model: lmstudioProvider(baseUrl)(parsed.name),
+      middleware: reasoningAsJsonTextMiddleware,
     });
   }
   // gemini
