@@ -21,6 +21,10 @@ import {
   labelAxes,
 } from "./cluster-stages";
 
+// Fixed k-means++ seed: the same vote matrix must always yield the same groups,
+// otherwise re-running an identical run can change the number of camps.
+const KMEANS_SEED = 42;
+
 export type ClusterModels = {
   propositions: LanguageModel; // analysis role
   stances: LanguageModel; // bulk role
@@ -101,7 +105,7 @@ export async function clusterOpinions(
   let bestLabels: number[] = [];
   const maxK = Math.min(5, Math.floor(opinions.length / 2));
   for (let k = 2; k <= maxK; k++) {
-    const result = kmeans(voteMatrix, k, { initialization: "kmeans++" });
+    const result = kmeans(voteMatrix, k, { initialization: "kmeans++", seed: KMEANS_SEED });
     const score = silhouette(voteMatrix, result.clusters);
     if (score > bestScore) {
       bestScore = score;
