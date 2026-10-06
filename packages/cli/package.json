@@ -42,7 +42,7 @@
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit",
-    "prepack": "cp ../../LICENSE ../../NOTICE ../../THIRD_PARTY_LICENSES.md ."
+    "prepack": "cp ../../README.md ../../LICENSE ../../NOTICE ../../THIRD_PARTY_LICENSES.md ."
   },
   "dependencies": {
     "@duckdb/node-api": "1.5.5-r.4",

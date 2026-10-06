@@ -41,9 +41,10 @@ While on 0.x:
   breaking changes start costing a major. Not before real-world usage.
 
 Mechanics: `npm version patch|minor` (run in `packages/cli/`) bumps the
-manifest and creates the commit + matching `vX.Y.Z` tag in one step; then
-publish and `git push --follow-tags`. Keep the npm version and the git tag
-identical, always.
+manifest only — inside this monorepo npm creates no commit or tag — so commit
+it as `chore(release): vX.Y.Z` and add the matching annotated tag yourself;
+then publish and `git push --follow-tags`. Keep the npm version and the git
+tag identical, always.
 
 Published versions are immortal: npm blocks unpublish after 72 hours and a
 released number can never be reused. A bad release is fixed by the next
@@ -66,8 +67,11 @@ git tag -a v0.1.0 -m "v0.1.0" && git push --follow-tags
 gh release create v0.1.0 --generate-notes
 ```
 
-(From the second release on, `npm version patch|minor` replaces the manual
-bump + tag — see the versioning policy above.)
+(From the second release on, bump with `npm version patch|minor`, then commit
+and tag by hand — see the versioning policy above.)
+
+The README ships in the tarball (copied by `prepack`, like the license files),
+so the npm page shows it; check it appears in the dry run's file list.
 
 Notes:
 
