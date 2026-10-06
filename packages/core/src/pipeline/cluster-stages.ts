@@ -10,6 +10,7 @@ import { postContentBlock } from "../prompts/post";
 import { outputLangName } from "../schemas";
 import type {
   Opinion,
+  OpinionCluster,
   OpinionClusterGroupProfile,
   OpinionClusterMinorityReport,
   OpinionClusterProposition,
@@ -180,7 +181,7 @@ Return exactly ${opts.k} labels, in PC order.`,
 // === Group profiles + minority report (analysis model, one combined call) ===
 
 export async function generateGroupProfilesAndMinority(opts: {
-  clusters: { id: number; size: number; centroid: number[]; memberIds: string[] }[];
+  clusters: OpinionCluster[];
   propositions: OpinionClusterProposition[];
   opinions: Opinion[];
   outputLang: OutputLang;
