@@ -81,6 +81,12 @@ export function silhouette(data: number[][], labels: number[]): number {
   return totalS / n;
 }
 
+// Distinct cluster labels in numeric order — the order every groupSupport
+// array follows. (A bare .sort() compares as strings: [10, 2].)
+function sortedGroupLabels(labels: number[]): number[] {
+  return [...new Set(labels)].sort((a, b) => a - b);
+}
+
 /**
  * Consensus detection (product of Laplace-smoothed per-group agree rates).
  * Propositions all groups agree on score highest. Sorted by score, descending.
@@ -90,7 +96,7 @@ export function detectConsensus(
   labels: number[],
   propositions: OpinionClusterProposition[],
 ): OpinionClusterConsensus[] {
-  const uniqueLabels = [...new Set(labels)].sort();
+  const uniqueLabels = sortedGroupLabels(labels);
 
   return propositions
     .map((prop, j) => {
@@ -116,7 +122,7 @@ export function detectDivision(
   labels: number[],
   propositions: OpinionClusterProposition[],
 ): OpinionClusterDivisive[] {
-  const uniqueLabels = [...new Set(labels)].sort();
+  const uniqueLabels = sortedGroupLabels(labels);
 
   return propositions
     .map((prop, j) => {
@@ -142,7 +148,7 @@ export function computeBridging(
   labels: number[],
   propositions: OpinionClusterProposition[],
 ): OpinionClusterBridging[] {
-  const uniqueLabels = [...new Set(labels)].sort();
+  const uniqueLabels = sortedGroupLabels(labels);
 
   const results = propositions.map((prop, j) => {
     const groupSupport = uniqueLabels.map((label) => {

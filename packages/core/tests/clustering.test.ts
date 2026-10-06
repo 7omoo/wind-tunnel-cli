@@ -63,6 +63,14 @@ describe("detectConsensus", () => {
     expect(result[1]?.score).toBeCloseTo(0.125);
   });
 
+  // Array.prototype.sort() compares as strings: [10, 2].sort() is [10, 2].
+  it("orders groups numerically even past single-digit labels", () => {
+    const [p1] = detectConsensus([[1], [-1]], [10, 2], [{ id: "p1", text: "A" }]);
+    // label 2 (disagrees): 1/3 first, then label 10 (agrees): 2/3
+    expect(p1?.groupSupport[0]).toBeCloseTo(1 / 3);
+    expect(p1?.groupSupport[1]).toBeCloseTo(2 / 3);
+  });
+
   it("orders groupSupport by label, not by first appearance", () => {
     const [p1] = detectConsensus([[1], [-1], [-1]], [1, 0, 0], [{ id: "p1", text: "A" }]);
     // label 0 (two disagree): 1/4; label 1 (one agrees): 2/3
