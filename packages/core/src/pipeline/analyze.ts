@@ -18,7 +18,7 @@ import { postContentBlock } from "../prompts/post";
 import { outputLangName, riskLevelSchema, severitySchema } from "../schemas";
 import type { FlameResult, Opinion, OpinionScore, OutputLang, Trigger } from "../types";
 import { clampPromptInput } from "../util/sanitize";
-import { mapWaves } from "./batch";
+import { chunk, mapWaves } from "./batch";
 import { type ScoredOpinion, stratifiedSample } from "./sample";
 
 export const SCORE_BATCH_SIZE = 25;
@@ -41,10 +41,7 @@ export async function scoreOpinions(opts: ScoreOptions): Promise<ScoreResult> {
   const topic = clampPromptInput(opts.topic);
   const batchSize = opts.batchSize ?? SCORE_BATCH_SIZE;
   const lang = outputLangName(opts.outputLang);
-  const batches: Opinion[][] = [];
-  for (let i = 0; i < opts.opinions.length; i += batchSize) {
-    batches.push(opts.opinions.slice(i, i + batchSize));
-  }
+  const batches = chunk(opts.opinions, batchSize);
 
   // The model never writes a signed number. Small local models mis-sign
   // negative ranges (observed: reasons saying "clear criticism" scored +25),

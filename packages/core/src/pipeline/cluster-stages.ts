@@ -15,7 +15,7 @@ import type {
   OpinionClusterProposition,
   OutputLang,
 } from "../types";
-import { mapWaves } from "./batch";
+import { chunk, mapWaves } from "./batch";
 
 export const STANCE_BATCH_SIZE = 10;
 
@@ -72,10 +72,7 @@ export async function classifyStances(opts: {
   onProgress?: (done: number, total: number) => void;
 }): Promise<{ voteMatrix: number[][]; warnings: string[] }> {
   const batchSize = opts.batchSize ?? STANCE_BATCH_SIZE;
-  const batches: Opinion[][] = [];
-  for (let i = 0; i < opts.opinions.length; i += batchSize) {
-    batches.push(opts.opinions.slice(i, i + batchSize));
-  }
+  const batches = chunk(opts.opinions, batchSize);
   const propList = opts.propositions.map((p, j) => `${j + 1}. ${p.text}`).join("\n");
   const pCount = opts.propositions.length;
 
