@@ -11,7 +11,6 @@ import type {
   ClusterArtifact,
   PersonasArtifact,
   RunInput,
-  RunStageName,
   RunStatus,
   ScoresArtifact,
   SuggestArtifact,
@@ -28,6 +27,18 @@ const FILES = {
   suggest: "suggest.json",
   csv: "result.csv",
 } as const;
+
+function initialStatus(now: Date): RunStatus {
+  return {
+    schemaVersion: 1,
+    stage: "filter",
+    startedAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+    completedAt: null,
+    error: null,
+    warnings: [],
+  };
+}
 
 export class RunStore {
   private constructor(readonly dir: string) {}
@@ -47,16 +58,7 @@ export class RunStore {
     }
     const store = new RunStore(dir);
     await store.writeJson(FILES.input, input);
-    const status: RunStatus = {
-      schemaVersion: 1,
-      stage: "filter",
-      startedAt: now.toISOString(),
-      updatedAt: now.toISOString(),
-      completedAt: null,
-      error: null,
-      warnings: [],
-    };
-    await store.writeJson(FILES.status, status);
+    await store.writeJson(FILES.status, initialStatus(now));
     return store;
   }
 
@@ -107,15 +109,7 @@ export class RunStore {
     },
     now = new Date(),
   ): Promise<RunStatus> {
-    const current = (await this.readStatus()) ?? {
-      schemaVersion: 1 as const,
-      stage: "filter" as RunStageName,
-      startedAt: now.toISOString(),
-      updatedAt: now.toISOString(),
-      completedAt: null,
-      error: null,
-      warnings: [],
-    };
+    const current = (await this.readStatus()) ?? initialStatus(now);
     const next: RunStatus = {
       ...current,
       ...(patch.stage !== undefined ? { stage: patch.stage } : {}),
