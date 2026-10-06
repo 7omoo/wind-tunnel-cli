@@ -1,7 +1,10 @@
 // Workaround for thinking models served by LM Studio.
 //
-// TODO(lmstudio-bug-tracker#1990): remove this middleware once LM Studio honors
-// `chat_template_kwargs.enable_thinking: false` on its OpenAI-compatible API.
+// TODO(lmstudio-bug-tracker#1773, #1971): remove this middleware once LM Studio
+// returns a structured answer in `content` for thinking models — or honors
+// `enable_thinking: false` per request (#1990), which would avoid it.
+// https://github.com/lmstudio-ai/lmstudio-bug-tracker/issues/1773
+// https://github.com/lmstudio-ai/lmstudio-bug-tracker/issues/1971 (same model)
 // https://github.com/lmstudio-ai/lmstudio-bug-tracker/issues/1990
 //
 // The bug: thinking cannot be turned off per request, and on a structured-output

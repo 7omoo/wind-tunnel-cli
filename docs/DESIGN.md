@@ -142,7 +142,9 @@ differences from Ollama shape the integration:
   (`LMSTUDIO_MIN_CONTEXT`, from `STAGE_NUM_CTX`); `run` and `doctor` verify it.
 - Thinking cannot be turned off per request
   ([lmstudio-bug-tracker#1990](https://github.com/lmstudio-ai/lmstudio-bug-tracker/issues/1990)),
-  and on structured calls the constrained answer lands in `reasoning_content`.
+  and on structured calls the constrained answer lands in `reasoning_content`
+  ([#1773](https://github.com/lmstudio-ai/lmstudio-bug-tracker/issues/1773),
+  [#1971](https://github.com/lmstudio-ai/lmstudio-bug-tracker/issues/1971)).
   A middleware (`lmstudio/reasoning-workaround.ts`, TODO to remove) recovers it
   for JSON calls only; non-thinking models are recommended.
 - After any unstructured request, the next structured request is answered
