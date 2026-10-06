@@ -23,6 +23,7 @@ import { createOllama, type OllamaProvider } from "ai-sdk-ollama";
 import { DEFAULT_LMSTUDIO_URL } from "../lmstudio/client";
 import { reasoningAsJsonTextMiddleware } from "../lmstudio/reasoning-workaround";
 import { DEFAULT_OLLAMA_URL } from "../ollama/client";
+import { CuratedError } from "../util/curated-error";
 import { DEFAULT_KEEP_ALIVE, type PipelineStage, STAGE_NUM_CTX } from "./stages";
 
 export type ModelProvider = "ollama" | "lmstudio" | "gemini";
@@ -36,7 +37,7 @@ export function parseModelSpec(spec: string): ParsedModelSpec {
   const provider = i === -1 ? "" : spec.slice(0, i);
   const name = i === -1 ? "" : spec.slice(i + 1);
   if (!provider || !name) {
-    throw new Error(
+    throw new CuratedError(
       `Invalid model spec "${spec}" — expected "provider:model", e.g. "ollama:qwen3:8b"`,
     );
   }

@@ -159,5 +159,6 @@ export type {
 
 // Utilities
 export { opinionsToCsv } from "./util/csv";
+export { CuratedError } from "./util/curated-error";
 export { clampPromptInput, escapeForPrompt, quoteUntrusted } from "./util/sanitize";
 export { shuffle } from "./util/shuffle";

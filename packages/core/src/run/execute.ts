@@ -22,6 +22,7 @@ import { suggestAlternatives } from "../pipeline/suggest";
 import { defaultPersonaLang } from "../schemas";
 import type { Opinion, RawPersona } from "../types";
 import { opinionsToCsv } from "../util/csv";
+import { CuratedError } from "../util/curated-error";
 import type { RunStore } from "./store";
 import type { RunProgressEvent, RunSummary } from "./types";
 
@@ -62,7 +63,7 @@ export async function executeRun(store: RunStore, deps: ExecuteDeps): Promise<Ru
         count: input.filter.personaCount,
       });
       if (personas.length === 0) {
-        throw new Error("no personas matched the filter — pull a pool or relax the filter");
+        throw new CuratedError("no personas matched the filter — pull a pool or relax the filter");
       }
       personasArtifact = {
         schemaVersion: 1,

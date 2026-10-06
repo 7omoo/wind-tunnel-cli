@@ -6,6 +6,7 @@
 // Curated errors thrown by our own code embed their remedy after an em-dash
 // ("no persona pool installed — run: …") and pass through untouched.
 
+import { CuratedError } from "@wind-tunnel/core";
 import { paint, useColor } from "./render/format";
 
 const ISSUES_URL = "https://github.com/7omoo/wind-tunnel-cli/issues";
@@ -51,7 +52,7 @@ export function classifyError(e: unknown): ClassifiedError {
   const text = collectText(e);
 
   // Our own curated errors carry their remedy inline.
-  if (message.includes("—")) {
+  if (e instanceof CuratedError) {
     return { kind: "curated", headline: message, hints: [] };
   }
 

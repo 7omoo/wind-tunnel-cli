@@ -1,4 +1,5 @@
 import { PassThrough } from "node:stream";
+import { CuratedError } from "@wind-tunnel/core";
 import { describe, expect, it } from "vitest";
 import { classifyError, renderError } from "../src/errors";
 
@@ -51,10 +52,18 @@ describe("classifyError", () => {
     expect(classifyError(eacces).kind).toBe("permission");
   });
 
-  it("passes curated errors (em-dash remedies) through untouched", () => {
-    const c = classifyError(new Error("no persona pool installed — run: wt-cli personas pull usa"));
+  it("passes curated errors (remedy in the message) through untouched", () => {
+    const c = classifyError(
+      new CuratedError("no persona pool installed — run: wt-cli personas pull usa"),
+    );
     expect(c.kind).toBe("curated");
     expect(c.headline).toContain("wt-cli personas pull usa");
+  });
+
+  // Curated-ness is a type, not punctuation: a dependency's message that
+  // happens to contain an em dash must still be classified normally.
+  it("does not treat a foreign error as curated because of an em dash", () => {
+    expect(classifyError(new Error("upstream said no — try later")).kind).toBe("unknown");
   });
 
   it("leaves unknown errors honest", () => {
@@ -68,7 +77,7 @@ describe("renderError", () => {
   it("adds the resume hint for classified failures but not for curated ones", () => {
     expect(render(connError("ECONNREFUSED"), { resumeId: "r1" })).toContain("wt-cli resume r1");
     expect(
-      render(new Error("country not in the pool — run: wt-cli personas pull jp"), {
+      render(new CuratedError("country not in the pool — run: wt-cli personas pull jp"), {
         resumeId: "r1",
       }),
     ).not.toContain("resume r1");

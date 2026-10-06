@@ -3,6 +3,7 @@
 // pool, same format custom datasets will use).
 
 import {
+  CuratedError,
   createPipelineModels,
   dataRoot,
   defaultPersonaLang,
@@ -128,11 +129,15 @@ export async function runCommand(message: string, flags: RunFlags): Promise<numb
       const poolPath = defaultPoolPath(dataRoot());
       const pullHint = `wt-cli personas pull ${cfg.run.country}`;
       if (!(await poolExists(poolPath))) {
-        throw new Error(`no persona pool installed — run: ${pullHint} (or pass --personas-file)`);
+        throw new CuratedError(
+          `no persona pool installed — run: ${pullHint} (or pass --personas-file)`,
+        );
       }
       pool = await openPersonaPool(poolPath);
       if ((await pool.poolVersion(cfg.run.country)).startsWith("none-")) {
-        throw new Error(`country "${cfg.run.country}" is not in the pool — run: ${pullHint}`);
+        throw new CuratedError(
+          `country "${cfg.run.country}" is not in the pool — run: ${pullHint}`,
+        );
       }
       source = pool;
     }
