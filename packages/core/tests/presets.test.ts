@@ -1,3 +1,4 @@
+import { DuckDBConnection, DuckDBInstance } from "@duckdb/node-api";
 import { describe, expect, it } from "vitest";
 import { COUNTRY_TO_REGIONS } from "../src/data/countries";
 import { COUNTRY_PRESETS, presetGlob, SEX_NORM_SQL } from "../src/personas/presets";
@@ -47,6 +48,48 @@ describe("country presets", () => {
     }
     for (const raw of ["女", "Female", "Femme", "여자", "Feminino", "Nữ"]) {
       expect(SEX_NORM_SQL).toContain(`'${raw}'`);
+    }
+  });
+});
+
+describe("SEX_NORM_SQL", () => {
+  // Evaluated by DuckDB itself, exactly as ingest embeds it.
+  it("maps each dataset's spelling to M / F and anything else to NULL", async () => {
+    const values = [
+      "男",
+      "Male",
+      "Homme",
+      "남자",
+      "Nam",
+      "女",
+      "Female",
+      "Femme",
+      "Feminino",
+      "Nữ",
+      "other",
+      "",
+    ];
+    const instance = await DuckDBInstance.create(":memory:");
+    const connection = await DuckDBConnection.create(instance);
+    try {
+      const rows = values.map((v) => `('${v}')`).join(", ");
+      const result = await connection.run(`SELECT ${SEX_NORM_SQL} FROM (VALUES ${rows}) AS t(sex)`);
+      expect((await result.getRows()).map((r) => r[0])).toEqual([
+        "M",
+        "M",
+        "M",
+        "M",
+        "M",
+        "F",
+        "F",
+        "F",
+        "F",
+        "F",
+        null,
+        null,
+      ]);
+    } finally {
+      connection.closeSync();
     }
   });
 });
