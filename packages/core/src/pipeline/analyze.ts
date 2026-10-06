@@ -37,29 +37,38 @@ export type ScoreOptions = {
 
 export type ScoreResult = { scores: OpinionScore[]; warnings: string[] };
 
+type StanceRating = { stance: "critical" | "neutral" | "favorable"; intensity: number };
+
+// The model never writes a signed number. Small local models mis-sign
+// negative ranges (observed: reasons saying "clear criticism" scored +25), so
+// the schema takes a stance enum plus an unsigned intensity and the sign is
+// composed here — a sign error is structurally impossible. Non-neutral
+// intensities clamp to [20, 100] so the stance always lands in its sentiment
+// band (threshold ±20).
+function signedScore({ stance, intensity }: StanceRating): number {
+  if (stance === "neutral") return 0;
+  return (stance === "critical" ? -1 : 1) * Math.min(100, Math.max(20, intensity));
+}
+
 export async function scoreOpinions(opts: ScoreOptions): Promise<ScoreResult> {
   const topic = clampPromptInput(opts.topic);
   const batchSize = opts.batchSize ?? SCORE_BATCH_SIZE;
   const batches = chunk(opts.opinions, batchSize);
 
-  // The model never writes a signed number. Small local models mis-sign
-  // negative ranges (observed: reasons saying "clear criticism" scored +25),
-  // so the schema takes a stance enum plus an unsigned intensity and the sign
-  // is composed in code — a sign error is structurally impossible.
   const system = scoreSystemPrompt(opts.outputLang);
 
   const settled = await mapWaves(
     batches,
     opts.concurrency,
     async (batch) => {
-      const ids = batch.map((o) => o.personaId);
-      // Constrained decoding pins personaId to the exact ids of this batch and
-      // forces one entry per reaction.
+      // Exactly one entry per reaction, matched by position — the stance
+      // stage's approach. Asking for persona ids (an enum per batch) made each
+      // batch a new schema, slow to compile on some servers (~60 s on LM
+      // Studio), cost tokens copying ids, and still allowed duplicates.
       const schema = z.object({
         scores: z
           .array(
             z.object({
-              personaId: z.enum(ids as [string, ...string[]]),
               stance: z.enum(["critical", "neutral", "favorable"]),
               intensity: z.number().min(0).max(100),
               reason: z.string(),
@@ -75,16 +84,12 @@ export async function scoreOpinions(opts: ScoreOptions): Promise<ScoreResult> {
         prompt: scoreUserPrompt(topic, batch),
         abortSignal: stageTimeoutSignal("score"),
       });
-      // Compose the signed score. Non-neutral intensities clamp to [20, 100] so
-      // the stance always lands in its sentiment band (threshold ±20).
-      return output.scores.map((s) => ({
-        personaId: s.personaId,
-        score:
-          s.stance === "neutral"
-            ? 0
-            : (s.stance === "critical" ? -1 : 1) * Math.min(100, Math.max(20, s.intensity)),
-        reason: s.reason,
-      }));
+      return batch.flatMap((opinion, i) => {
+        const rating = output.scores[i];
+        return rating
+          ? [{ personaId: opinion.personaId, score: signedScore(rating), reason: rating.reason }]
+          : [];
+      });
     },
     opts.onProgress,
   );
@@ -110,8 +115,8 @@ export async function scoreOpinions(opts: ScoreOptions): Promise<ScoreResult> {
     throw new Error(`all ${batches.length} score batches failed`, { cause: lastFailure });
   }
 
-  // Opinions from failed batches (or ids the model still missed) score 0 so
-  // downstream stats stay complete; the gap is reported, not hidden.
+  // Opinions from failed batches score 0 so downstream stats stay complete;
+  // the gap is reported, not hidden.
   let defaulted = 0;
   const scores = opts.opinions.map((o) => {
     const s = byId.get(o.personaId);

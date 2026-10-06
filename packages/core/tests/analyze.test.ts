@@ -12,19 +12,18 @@ function opinion(id: string, text: string): Opinion {
   };
 }
 
-// Parse "[id] text" lines out of the prompt the mock actually received.
-function idsInPrompt(prompt: string): string[] {
-  return [...prompt.matchAll(/^\[([^\]]+)\]/gm)].map((m) => m[1] as string);
+// Reactions are numbered in the prompt ("Reaction 1: ..."); the model answers
+// one entry per reaction in that order. Returns the reaction texts it received.
+function reactionsInPrompt(prompt: string): string[] {
+  return [...prompt.matchAll(/^Reaction \d+: (.*)$/gm)].map((m) => m[1] as string);
 }
 
 describe("scoreOpinions", () => {
   it("scores every opinion across batches and sorts ascending", async () => {
     const opinions = Array.from({ length: 30 }, (_, i) => opinion(`p${i}`, `意見 ${i}`));
     const model = textModel((prompt) => {
-      const ids = idsInPrompt(prompt);
       const stances = ["critical", "neutral", "favorable"] as const;
-      const scores = ids.map((personaId, i) => ({
-        personaId,
+      const scores = reactionsInPrompt(prompt).map((_, i) => ({
         stance: stances[i % 3],
         intensity: 20 + ((i * 13) % 80),
         reason: "理由",
@@ -51,11 +50,10 @@ describe("scoreOpinions", () => {
     const opinions = Array.from({ length: 20 }, (_, i) => opinion(`p${i}`, `意見 ${i}`));
     // Fail the batch that contains p0 (first batch); succeed the second.
     const model = textModel((prompt) => {
-      const ids = idsInPrompt(prompt);
-      if (ids.includes("p0")) throw new Error("batch exploded");
+      const reactions = reactionsInPrompt(prompt);
+      if (reactions.includes("意見 0")) throw new Error("batch exploded");
       return JSON.stringify({
-        scores: ids.map((personaId) => ({
-          personaId,
+        scores: reactions.map(() => ({
           stance: "favorable",
           intensity: 40,
           reason: "",
@@ -87,15 +85,63 @@ describe("scoreOpinions", () => {
   });
 });
 
+describe("scoreOpinions — matching by position", () => {
+  // Persona ids are never sent to the model: they made every batch a new
+  // schema (an id enum) and cost tokens. Entries map back by position.
+  it("numbers reactions in the prompt and keeps ids out of it", async () => {
+    const prompts: string[] = [];
+    const model = textModel((prompt) => {
+      prompts.push(prompt);
+      return JSON.stringify({
+        scores: reactionsInPrompt(prompt).map(() => ({
+          stance: "neutral",
+          intensity: 0,
+          reason: "",
+        })),
+      });
+    });
+    await scoreOpinions({
+      topic: "t",
+      opinions: [opinion("uuid-aaa", "first"), opinion("uuid-bbb", "second")],
+      outputLang: "en",
+      model,
+      concurrency: 1,
+    });
+    expect(prompts[0]).toContain("Reaction 1: first\nReaction 2: second");
+    expect(prompts[0]).not.toContain("uuid-");
+  });
+
+  it("assigns the i-th entry to the i-th reaction of the batch", async () => {
+    const model = textModel(() =>
+      JSON.stringify({
+        scores: [
+          { stance: "critical", intensity: 80, reason: "hates it" },
+          { stance: "favorable", intensity: 60, reason: "likes it" },
+        ],
+      }),
+    );
+    const { scores } = await scoreOpinions({
+      topic: "t",
+      opinions: [opinion("x", "boo"), opinion("y", "yay")],
+      outputLang: "en",
+      model,
+      concurrency: 1,
+    });
+    const byId = new Map(scores.map((s) => [s.personaId, s]));
+    expect(byId.get("x")).toEqual({ personaId: "x", score: -80, reason: "hates it" });
+    expect(byId.get("y")).toEqual({ personaId: "y", score: 60, reason: "likes it" });
+  });
+});
+
 describe("scoreOpinions — sign composition", () => {
   it("composes the sign in code so a model sign error is impossible", async () => {
     const opinions = [opinion("a", "批判"), opinion("b", "退屈"), opinion("c", "称賛")];
     const model = textModel([
       JSON.stringify({
         scores: [
-          { personaId: "a", stance: "critical", intensity: 70, reason: "" },
-          { personaId: "b", stance: "neutral", intensity: 90, reason: "" },
-          { personaId: "c", stance: "favorable", intensity: 5, reason: "" },
+          { stance: "critical", intensity: 70, reason: "" },
+          { stance: "neutral", intensity: 90, reason: "" },
+          { stance: "favorable", intensity: 5, reason: "" },
         ],
       }),
     ]);

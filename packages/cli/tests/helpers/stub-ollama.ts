@@ -27,10 +27,10 @@ export type StubOllama = {
 // English-output routing (outputLang "en"): markers come from the real prompts.
 function respond(prompt: string, call: number): string {
   if (prompt.includes("Score every reaction")) {
-    const ids = [...prompt.matchAll(/^\[([^\]]+)\]/gm)].map((m) => m[1] as string);
+    // One entry per numbered reaction, in order (scores map by position).
+    const reactions = [...prompt.matchAll(/^Reaction \d+: /gm)];
     return JSON.stringify({
-      scores: ids.map((personaId, i) => ({
-        personaId,
+      scores: reactions.map((_, i) => ({
         stance: i % 2 === 0 ? "critical" : "favorable",
         intensity: i % 2 === 0 ? 60 : 55,
         reason: "stub reason",

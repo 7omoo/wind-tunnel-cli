@@ -48,10 +48,10 @@ function pipelineModels(opts: { failCluster?: boolean } = {}): PipelineModels & 
   const callsByRole = new Map<ModelRole, number>();
   const model = textModel((prompt) => {
     if (prompt.includes("Score every reaction")) {
-      const ids = [...prompt.matchAll(/^\[([^\]]+)\]/gm)].map((m) => m[1] as string);
+      // One entry per numbered reaction, in order (scores map by position).
+      const reactions = [...prompt.matchAll(/^Reaction \d+: /gm)];
       return JSON.stringify({
-        scores: ids.map((personaId, i) => ({
-          personaId,
+        scores: reactions.map((_, i) => ({
           stance: i % 2 === 0 ? "critical" : "favorable",
           intensity: i % 2 === 0 ? 60 : 55,
           reason: "理由",
