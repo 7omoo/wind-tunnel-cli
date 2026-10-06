@@ -23,6 +23,13 @@ export function quoteUntrusted(tag: string, text: string): string {
 
 // Escape LLM-generated text before re-embedding it in subsequent prompts.
 // Prevents indirect prompt injection via model outputs.
+//
+// Applied to upstream *analysis* output that a later prompt treats as context
+// (group names, beliefs, triggers, the safe version — see prompts/suggest.ts).
+// Persona reactions are deliberately NOT escaped where they are the material
+// under analysis (scoring, verdict, stances, propositions): rewriting them
+// would change what is being measured, the same reason the user's copy is
+// embedded verbatim.
 export function escapeForPrompt(text: string): string {
   let escaped = text;
   // Collapse multiple newlines (prevents fake section breaks)
