@@ -13,7 +13,7 @@
 import { generateText, type LanguageModel, Output } from "ai";
 import { z } from "zod";
 import { averageScore, percentages, sentimentCounts } from "../analysis/scoring";
-import { stageTimeoutSignal } from "../models/stages";
+import { ANALYSIS_TEMPERATURE, stageTimeoutSignal } from "../models/stages";
 import { postContentBlock } from "../prompts/post";
 import { outputLangName, riskLevelSchema, severitySchema } from "../schemas";
 import type { FlameResult, Opinion, OpinionScore, OutputLang, Trigger } from "../types";
@@ -79,7 +79,7 @@ export async function scoreOpinions(opts: ScoreOptions): Promise<ScoreResult> {
       const reactionsBlock = batch.map((o) => `[${o.personaId}] ${o.text}`).join("\n");
       const { output } = await generateText({
         model: opts.model,
-        temperature: 0.1,
+        temperature: ANALYSIS_TEMPERATURE,
         output: Output.object({ schema }),
         system,
         prompt: `${postContentBlock(topic, false)}\n\nReactions:\n${reactionsBlock}\n\nScore every reaction.`,
@@ -220,7 +220,7 @@ export async function analyzeVerdict(opts: VerdictOptions): Promise<FlameResult>
 
   const { output } = await generateText({
     model: opts.model,
-    temperature: 0.1,
+    temperature: ANALYSIS_TEMPERATURE,
     abortSignal: stageTimeoutSignal("verdict"),
     output: Output.object({ schema: verdictGenSchema }),
     system,

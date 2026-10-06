@@ -5,7 +5,7 @@
 
 import { generateText, type LanguageModel, Output } from "ai";
 import { z } from "zod";
-import { stageTimeoutSignal } from "../models/stages";
+import { ANALYSIS_TEMPERATURE, stageTimeoutSignal } from "../models/stages";
 import { postContentBlock } from "../prompts/post";
 import { outputLangName } from "../schemas";
 import type {
@@ -38,7 +38,7 @@ export async function extractPropositions(opts: {
   const opinionsText = opts.opinions.map((o, i) => `${i + 1}. ${o.text}`).join("\n");
   const { output } = await generateText({
     model: opts.model,
-    temperature: 0.1,
+    temperature: ANALYSIS_TEMPERATURE,
     abortSignal: stageTimeoutSignal("propositions"),
     output: Output.object({ schema }),
     system: `You are an expert in public opinion analysis. Extract specific propositions that can be voted on as agree/disagree from multiple opinions. Output the propositions in ${lang}.`,
@@ -89,7 +89,7 @@ export async function classifyStances(opts: {
       const opinionsBlock = batch.map((o, i) => `Opinion ${i + 1}: "${o.text}"`).join("\n");
       const { output } = await generateText({
         model: opts.model,
-        temperature: 0.1,
+        temperature: ANALYSIS_TEMPERATURE,
         abortSignal: stageTimeoutSignal("stance"),
         output: Output.object({ schema }),
         system:
@@ -162,7 +162,7 @@ export async function labelAxes(opts: {
     const schema = z.object({ labels: z.array(z.string()).length(opts.k) });
     const { output } = await generateText({
       model: opts.model,
-      temperature: 0.1,
+      temperature: ANALYSIS_TEMPERATURE,
       abortSignal: stageTimeoutSignal("axis_labels"),
       output: Output.object({ schema }),
       system: `You are an expert in public opinion analysis. Interpret the meaning of PCA axes. Output in ${lang}.`,
@@ -282,7 +282,7 @@ export async function generateGroupProfilesAndMinority(opts: {
   try {
     const { output } = await generateText({
       model: opts.model,
-      temperature: 0.1,
+      temperature: ANALYSIS_TEMPERATURE,
       abortSignal: stageTimeoutSignal("profiles"),
       output: Output.object({ schema }),
       system: `You are an expert in opinion group analysis${hasMinority ? " and minority blind-spot analysis" : ""}. Profile each opinion group independently${hasMinority ? ", then surface what the majority overlooks about the minority" : ""}. Output in ${lang}.`,

@@ -26,6 +26,11 @@ export const STAGE_NUM_CTX: Record<PipelineStage, number> = {
   suggest: 16384,
 };
 
+// Sampling temperature for every analysis stage (everything but react): low,
+// so scores, stances, labels and summaries stay stable from run to run. The
+// react stage sets none and uses the model default, keeping persona voices varied.
+export const ANALYSIS_TEMPERATURE = 0.1;
+
 // Keep models resident between stages so a run never pays reload latency
 // mid-pipeline. Ollama's default (5m) can evict between slow stages.
 export const DEFAULT_KEEP_ALIVE = "15m";
