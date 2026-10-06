@@ -14,6 +14,7 @@ import { generateText, type LanguageModel, Output } from "ai";
 import { z } from "zod";
 import { averageScore, percentages, sentimentCounts } from "../analysis/scoring";
 import { ANALYSIS_TEMPERATURE, stageTimeoutSignal } from "../models/stages";
+import { scoreSystemPrompt, scoreUserPrompt } from "../prompts/analyze";
 import { postContentBlock } from "../prompts/post";
 import { outputLangName, riskLevelSchema, severitySchema } from "../schemas";
 import type { FlameResult, Opinion, OpinionScore, OutputLang, Trigger } from "../types";
@@ -40,22 +41,13 @@ export type ScoreResult = { scores: OpinionScore[]; warnings: string[] };
 export async function scoreOpinions(opts: ScoreOptions): Promise<ScoreResult> {
   const topic = clampPromptInput(opts.topic);
   const batchSize = opts.batchSize ?? SCORE_BATCH_SIZE;
-  const lang = outputLangName(opts.outputLang);
   const batches = chunk(opts.opinions, batchSize);
 
   // The model never writes a signed number. Small local models mis-sign
   // negative ranges (observed: reasons saying "clear criticism" scored +25),
   // so the schema takes a stance enum plus an unsigned intensity and the sign
   // is composed in code — a sign error is structurally impossible.
-  //
-  // Calibration ("boredom is not backlash"): dismissive/bored/pointless
-  // reactions are neutral, not critical; without that, harmless-but-bland
-  // posts saturate the verdict (observed: a weather question at 95/100 HIGH).
-  const system = `You are a sentiment scorer for public reactions to a post/ad. For EVERY reaction, classify its stance toward the post and rate the intensity, with a one-sentence reason in ${lang}.
-- stance "critical": the reaction criticizes, objects to, or is offended by the post
-- stance "neutral": indifferent, bored, ambivalent, or "this is pointless" — dismissiveness is NOT criticism
-- stance "favorable": the reaction approves of or supports the post
-- intensity 20-100: how strongly the stance is expressed (mild 20-50, strong 60-100; ignored for neutral)`;
+  const system = scoreSystemPrompt(opts.outputLang);
 
   const settled = await mapWaves(
     batches,
@@ -76,13 +68,12 @@ export async function scoreOpinions(opts: ScoreOptions): Promise<ScoreResult> {
           )
           .length(batch.length),
       });
-      const reactionsBlock = batch.map((o) => `[${o.personaId}] ${o.text}`).join("\n");
       const { output } = await generateText({
         model: opts.model,
         temperature: ANALYSIS_TEMPERATURE,
         output: Output.object({ schema }),
         system,
-        prompt: `${postContentBlock(topic, false)}\n\nReactions:\n${reactionsBlock}\n\nScore every reaction.`,
+        prompt: scoreUserPrompt(topic, batch),
         abortSignal: stageTimeoutSignal("score"),
       });
       // Compose the signed score. Non-neutral intensities clamp to [20, 100] so
