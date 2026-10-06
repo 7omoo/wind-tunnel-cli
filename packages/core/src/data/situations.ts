@@ -19,16 +19,6 @@ export type SituationMeta = {
 // Default situation. Unspecified/invalid values fall back here.
 export const DEFAULT_SITUATION: Situation = "sns_viral";
 
-// Display order: anonymous & heated -> named & measured. Must equal the situationSchema enum as a set.
-export const SITUATION_CODES: readonly Situation[] = [
-  "anon_board",
-  "sns_viral",
-  "news_comment",
-  "public_comment",
-  "real_sns",
-  "consumer_survey",
-];
-
 export const SITUATIONS: Record<Situation, SituationMeta> = {
   anon_board: { id: "anon_board", label: "Anonymous board", lengthPolicy: "free" },
   sns_viral: { id: "sns_viral", label: "Viral social media", lengthPolicy: "one_two" },

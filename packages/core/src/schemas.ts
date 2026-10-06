@@ -17,6 +17,7 @@ export type Country = z.infer<typeof countrySchema>;
 // medium, and social role change the heat and register of the voice. Independent
 // of country and language; only the reaction stage consumes it. The channel
 // prose lives in prompts/situation.ts; metadata in data/situations.ts.
+// Listed anonymous & heated -> named & measured (also the display order).
 export const situationSchema = z.enum([
   "anon_board",
   "sns_viral",

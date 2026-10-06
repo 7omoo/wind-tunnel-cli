@@ -27,7 +27,6 @@ export type { RegionOption } from "./data/regions";
 export {
   DEFAULT_SITUATION,
   type LengthPolicy,
-  SITUATION_CODES,
   SITUATIONS,
   type SituationMeta,
 } from "./data/situations";
