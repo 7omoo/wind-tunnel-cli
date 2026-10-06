@@ -205,4 +205,22 @@ describe("classifyStances", () => {
     expect(voteMatrix.slice(0, 10).every((row) => row.every((v) => v === 0))).toBe(true);
     expect(warnings.some((w) => w.includes("rows neutral"))).toBe(true);
   });
+
+  it("fails closed when every batch fails instead of returning an all-neutral matrix", async () => {
+    const opinions = Array.from({ length: 20 }, (_, i) => opinion(`p${i}`, `意見 ${i}`));
+    const outage = new Error("connect ECONNREFUSED");
+    const model = textModel(() => {
+      throw outage;
+    });
+    const promise = classifyStances({
+      opinions,
+      propositions: [{ id: "p1", text: "A" }],
+      model,
+      concurrency: 2,
+      batchSize: 10,
+    });
+    await expect(promise).rejects.toThrow("all 2 stance batches failed");
+    // The cause is kept so the CLI error classifier can see the network layer.
+    await expect(promise).rejects.toHaveProperty("cause", outage);
+  });
 });

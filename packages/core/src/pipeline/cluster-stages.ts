@@ -110,18 +110,27 @@ Return votes as one row per opinion (in the same order), each row containing one
 
   const voteMatrix: number[][] = [];
   const warnings: string[] = [];
+  let failedBatches = 0;
+  let lastFailure: unknown;
   settled.forEach((result, i) => {
     if (result.status === "fulfilled") {
       voteMatrix.push(...result.value);
     } else {
       // A failed batch degrades to all-neutral rows (the original behavior);
       // reported so a run summary can show classification coverage.
+      failedBatches++;
+      lastFailure = result.reason;
       const batch = batches[i] ?? [];
       for (const _ of batch) voteMatrix.push(new Array<number>(pCount).fill(0));
       const reason = result.reason instanceof Error ? result.reason.message : String(result.reason);
       warnings.push(`stance batch ${i + 1}/${batches.length} failed (rows neutral): ${reason}`);
     }
   });
+  if (failedBatches === batches.length && batches.length > 0) {
+    // An all-neutral matrix would cluster into a fabricated single camp, so a
+    // total outage fails like the score stage; cause kept for the CLI classifier.
+    throw new Error(`all ${batches.length} stance batches failed`, { cause: lastFailure });
+  }
   return { voteMatrix, warnings };
 }
 
