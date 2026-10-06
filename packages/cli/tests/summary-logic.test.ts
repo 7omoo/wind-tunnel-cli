@@ -25,6 +25,19 @@ describe("firstSentence", () => {
     );
   });
 
+  // Seen in a live run: the summary was cut to "...sectors (e." on screen.
+  it("does not end a sentence at abbreviations or decimals", () => {
+    expect(
+      firstSentence(
+        "The post triggers backlash from low-wage sectors (e.g., transportation, education). Reactions are uniform.",
+      ),
+    ).toBe("The post triggers backlash from low-wage sectors (e.g., transportation, education).");
+    expect(firstSentence("Support drops 3.5 points among nurses. Others shrug.")).toBe(
+      "Support drops 3.5 points among nurses.",
+    );
+    expect(firstSentence("Is this fair? Most say no.")).toBe("Is this fair?");
+  });
+
   it("falls back to a clip when there is no sentence break", () => {
     expect(firstSentence("句点のない長い文章".repeat(2))).toContain("句点のない");
   });

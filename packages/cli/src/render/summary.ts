@@ -45,9 +45,13 @@ export const GROUP_STYLES: Parameters<typeof paint>[0][] = [
 ];
 
 // First sentence of the verdict prose — the group cards carry the substance,
-// so the long summary paragraph compresses to its opening claim.
+// so the long summary paragraph compresses to its opening claim. CJK
+// terminators always end a sentence; Latin ones only before whitespace and a
+// non-lowercase character (or the end), so "e.g.," and "3.5" don't cut it short.
 export function firstSentence(text: string): string {
-  return text.match(/^[^。.!?！？]*[。.!?！？]/)?.[0]?.trim() ?? clip(text, 120);
+  return (
+    text.match(/^[\s\S]*?(?:[。！？]|[.!?](?=\s+[^\sa-z]|\s*$))/)?.[0]?.trim() ?? clip(text, 120)
+  );
 }
 
 // Pick up to two member voices for a group card: the most typical one (score
