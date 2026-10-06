@@ -6,6 +6,7 @@
 import { generateText, type LanguageModel, Output } from "ai";
 import { z } from "zod";
 import { stageTimeoutSignal } from "../models/stages";
+import { postContentBlock } from "../prompts/post";
 import { outputLangName } from "../schemas";
 import type {
   AlternativeSuggestions,
@@ -13,7 +14,7 @@ import type {
   OpinionClusterResult,
   OutputLang,
 } from "../types";
-import { escapeForPrompt, sanitizePromptInput } from "../util/sanitize";
+import { clampPromptInput, escapeForPrompt } from "../util/sanitize";
 
 const suggestGenSchema = z.object({
   alternatives: z
@@ -40,7 +41,7 @@ export type SuggestOptions = {
 };
 
 export async function suggestAlternatives(opts: SuggestOptions): Promise<AlternativeSuggestions> {
-  const topic = sanitizePromptInput(opts.topic);
+  const topic = clampPromptInput(opts.topic);
   const ja = opts.outputLang === "ja";
   const lang = outputLangName(opts.outputLang);
   const none = ja ? "なし" : "None";
@@ -138,7 +139,7 @@ Based on the opinion-cluster analysis data below (consensus, divisive points, br
     abortSignal: stageTimeoutSignal("suggest"),
     output: Output.object({ schema: suggestGenSchema }),
     system,
-    prompt: `${ja ? "テーマ" : "Topic"}: ${topic}
+    prompt: `${postContentBlock(topic, ja)}
 
 === ${labels.consensus} ===
 ${consensusBlock}

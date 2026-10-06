@@ -20,7 +20,7 @@ import {
 import { getSituationFraming } from "../prompts/situation";
 import { CONTEXT_MAX_CHARS } from "../schemas";
 import type { Country, Opinion, PersonaLang, RawPersona, Situation } from "../types";
-import { sanitizePromptInput } from "../util/sanitize";
+import { clampPromptInput } from "../util/sanitize";
 import { shuffle } from "../util/shuffle";
 import { chunk } from "./batch";
 
@@ -40,8 +40,8 @@ export type ReactOptions = {
 export type ReactSummary = { requested: number; succeeded: number; failed: number };
 
 export async function* reactPersonas(opts: ReactOptions): AsyncGenerator<Opinion, ReactSummary> {
-  const topic = sanitizePromptInput(opts.topic);
-  const context = opts.context ? sanitizePromptInput(opts.context, CONTEXT_MAX_CHARS) : "";
+  const topic = clampPromptInput(opts.topic);
+  const context = opts.context ? clampPromptInput(opts.context, CONTEXT_MAX_CHARS) : "";
   const lang = opts.personaLang;
 
   // One pool language per run (v1), so the language-dependent parts are built once.

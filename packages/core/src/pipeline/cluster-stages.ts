@@ -6,6 +6,7 @@
 import { generateText, type LanguageModel, Output } from "ai";
 import { z } from "zod";
 import { stageTimeoutSignal } from "../models/stages";
+import { postContentBlock } from "../prompts/post";
 import { outputLangName } from "../schemas";
 import type {
   Opinion,
@@ -42,7 +43,7 @@ export async function extractPropositions(opts: {
     system: `You are an expert in public opinion analysis. Extract specific propositions that can be voted on as agree/disagree from multiple opinions. Output the propositions in ${lang}.`,
     prompt: `Extract 10-15 specific propositions that can be answered with agree/disagree/neutral from the following ${opts.opinions.length} opinions.
 
-Topic: ${opts.topic}
+${postContentBlock(opts.topic, false)}
 
 Opinions:
 ${opinionsText}
@@ -110,18 +111,27 @@ Return votes as one row per opinion (in the same order), each row containing one
 
   const voteMatrix: number[][] = [];
   const warnings: string[] = [];
+  let failedBatches = 0;
+  let lastFailure: unknown;
   settled.forEach((result, i) => {
     if (result.status === "fulfilled") {
       voteMatrix.push(...result.value);
     } else {
       // A failed batch degrades to all-neutral rows (the original behavior);
       // reported so a run summary can show classification coverage.
+      failedBatches++;
+      lastFailure = result.reason;
       const batch = batches[i] ?? [];
       for (const _ of batch) voteMatrix.push(new Array<number>(pCount).fill(0));
       const reason = result.reason instanceof Error ? result.reason.message : String(result.reason);
       warnings.push(`stance batch ${i + 1}/${batches.length} failed (rows neutral): ${reason}`);
     }
   });
+  if (failedBatches === batches.length && batches.length > 0) {
+    // An all-neutral matrix would cluster into a fabricated single camp, so a
+    // total outage fails like the score stage; cause kept for the CLI classifier.
+    throw new Error(`all ${batches.length} stance batches failed`, { cause: lastFailure });
+  }
   return { voteMatrix, warnings };
 }
 

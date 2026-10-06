@@ -156,5 +156,5 @@ export type {
 // Utilities
 export { opinionsToCsv, safeFilename } from "./util/csv";
 export { parseLLMJson, parseLLMJsonChecked } from "./util/llm-json";
-export { escapeForPrompt, sanitizePromptInput } from "./util/sanitize";
+export { clampPromptInput, escapeForPrompt, quoteUntrusted } from "./util/sanitize";
 export { shuffle } from "./util/shuffle";

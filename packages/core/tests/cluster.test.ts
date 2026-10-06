@@ -1,3 +1,4 @@
+import type { LanguageModel } from "ai";
 import { describe, expect, it } from "vitest";
 import { clusterOpinions } from "../src/pipeline/cluster";
 import { classifyStances } from "../src/pipeline/cluster-stages";
@@ -21,39 +22,41 @@ const OPINIONS: Opinion[] = [
 
 const PROPOSITIONS = { propositions: [{ text: "命題A" }, { text: "命題B" }, { text: "命題C" }] };
 
-// Mock router: one model answers every cluster-stage call by shape.
-function clusterModel() {
-  return textModel((prompt) => {
-    if (prompt.includes("Extract 10-15 specific propositions")) {
-      return JSON.stringify(PROPOSITIONS);
-    }
-    if (prompt.includes("Return votes as one row per opinion")) {
-      // Vote by camp: "賛成" agrees, "反対" disagrees.
-      const rows = [...prompt.matchAll(/^Opinion \d+: "(.+)"$/gm)].map((m) =>
-        (m[1] ?? "").startsWith("賛成") ? [1, 1, -1] : [-1, -1, 1],
-      );
-      return JSON.stringify({ votes: rows });
-    }
-    if (prompt.includes("principal component axes")) {
-      return JSON.stringify({ labels: ["賛成 ←→ 反対", "強い ←→ 弱い", "A ←→ B"] });
-    }
-    if (prompt.includes("group profiles")) {
-      const count = Number(prompt.match(/Return exactly (\d+) group profiles/)?.[1] ?? 2);
-      return JSON.stringify({
-        groups: Array.from({ length: count }, (_, i) => ({
-          name: `グループ${i + 1}`,
-          coreBelief: "信念",
-          keyValues: ["価値1", "価値2"],
-          representativeQuote: "代表的発言",
-        })),
-        minority: { narrative: "少数派の視点", blindSpots: ["盲点1"] },
-      });
-    }
-    throw new Error(`unexpected prompt: ${prompt.slice(0, 80)}`);
-  });
+// Mock router: answers every cluster-stage call by prompt shape.
+function clusterResponse(prompt: string): string {
+  if (prompt.includes("Extract 10-15 specific propositions")) {
+    return JSON.stringify(PROPOSITIONS);
+  }
+  if (prompt.includes("Return votes as one row per opinion")) {
+    // Vote by camp: "賛成" agrees, "反対" disagrees.
+    const rows = [...prompt.matchAll(/^Opinion \d+: "(.+)"$/gm)].map((m) =>
+      (m[1] ?? "").startsWith("賛成") ? [1, 1, -1] : [-1, -1, 1],
+    );
+    return JSON.stringify({ votes: rows });
+  }
+  if (prompt.includes("principal component axes")) {
+    return JSON.stringify({ labels: ["賛成 ←→ 反対", "強い ←→ 弱い", "A ←→ B"] });
+  }
+  if (prompt.includes("group profiles")) {
+    const count = Number(prompt.match(/Return exactly (\d+) group profiles/)?.[1] ?? 2);
+    return JSON.stringify({
+      groups: Array.from({ length: count }, (_, i) => ({
+        name: `グループ${i + 1}`,
+        coreBelief: "信念",
+        keyValues: ["価値1", "価値2"],
+        representativeQuote: "代表的発言",
+      })),
+      minority: { narrative: "少数派の視点", blindSpots: ["盲点1"] },
+    });
+  }
+  throw new Error(`unexpected prompt: ${prompt.slice(0, 80)}`);
 }
 
-function models(model: ReturnType<typeof clusterModel>) {
+function clusterModel() {
+  return textModel(clusterResponse);
+}
+
+function models(model: LanguageModel) {
   return { propositions: model, stances: model, axisLabels: model, profiles: model };
 }
 
@@ -120,6 +123,50 @@ describe("clusterOpinions", () => {
     expect(result.bridging).toBeUndefined();
   });
 
+  it("is reproducible: identical input yields identical clusters", async () => {
+    // Overlapping vote patterns, so k-means++ seeding actually matters.
+    const patterns = [
+      [1, 1, 0, -1],
+      [1, 0, 0, -1],
+      [1, 1, 1, 0],
+      [0, 1, 1, 0],
+      [0, 0, 1, 1],
+      [-1, 0, 1, 1],
+      [-1, -1, 0, 1],
+      [-1, -1, -1, 0],
+      [0, -1, -1, -1],
+      [1, 0, -1, -1],
+      [0, 0, 0, 0],
+      [1, -1, 1, -1],
+    ];
+    const fuzzy = patterns.map((_, i) => opinion(`f${i}`, `パターン${i}`));
+    const fuzzyModel = textModel((prompt) => {
+      if (prompt.includes("Extract 10-15 specific propositions")) {
+        return JSON.stringify({ propositions: [1, 2, 3, 4].map((n) => ({ text: `命題${n}` })) });
+      }
+      if (prompt.includes("Return votes as one row per opinion")) {
+        const rows = [...prompt.matchAll(/^Opinion \d+: "パターン(\d+)"$/gm)].map(
+          (m) => patterns[Number(m[1])] ?? [0, 0, 0, 0],
+        );
+        return JSON.stringify({ votes: rows });
+      }
+      return clusterResponse(prompt);
+    });
+    const run = async () => {
+      const { result } = await clusterOpinions({
+        topic: "テーマ",
+        opinions: fuzzy,
+        propositionSample: fuzzy,
+        outputLang: "ja",
+        models: models(fuzzyModel),
+        concurrency: 4,
+      });
+      return result.clusters.map((c) => c.memberIds);
+    };
+    const first = await run();
+    for (let i = 0; i < 15; i++) expect(await run()).toEqual(first);
+  });
+
   it("rejects corpora too small to cluster", async () => {
     await expect(
       clusterOpinions({
@@ -157,5 +204,23 @@ describe("classifyStances", () => {
     expect(voteMatrix.every((row) => row.length === 2)).toBe(true);
     expect(voteMatrix.slice(0, 10).every((row) => row.every((v) => v === 0))).toBe(true);
     expect(warnings.some((w) => w.includes("rows neutral"))).toBe(true);
+  });
+
+  it("fails closed when every batch fails instead of returning an all-neutral matrix", async () => {
+    const opinions = Array.from({ length: 20 }, (_, i) => opinion(`p${i}`, `意見 ${i}`));
+    const outage = new Error("connect ECONNREFUSED");
+    const model = textModel(() => {
+      throw outage;
+    });
+    const promise = classifyStances({
+      opinions,
+      propositions: [{ id: "p1", text: "A" }],
+      model,
+      concurrency: 2,
+      batchSize: 10,
+    });
+    await expect(promise).rejects.toThrow("all 2 stance batches failed");
+    // The cause is kept so the CLI error classifier can see the network layer.
+    await expect(promise).rejects.toHaveProperty("cause", outage);
   });
 });

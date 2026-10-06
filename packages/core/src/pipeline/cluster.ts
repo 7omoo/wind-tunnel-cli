@@ -13,13 +13,17 @@ import {
   silhouette,
 } from "../analysis/clustering";
 import type { Opinion, OpinionClusterResult, OutputLang } from "../types";
-import { sanitizePromptInput } from "../util/sanitize";
+import { clampPromptInput } from "../util/sanitize";
 import {
   classifyStances,
   extractPropositions,
   generateGroupProfilesAndMinority,
   labelAxes,
 } from "./cluster-stages";
+
+// Fixed k-means++ seed: the same vote matrix must always yield the same groups,
+// otherwise re-running an identical run can change the number of camps.
+const KMEANS_SEED = 42;
 
 export type ClusterModels = {
   propositions: LanguageModel; // analysis role
@@ -47,7 +51,7 @@ export async function clusterOpinions(
   if (opinions.length < 3) {
     throw new Error(`not enough opinions to cluster (${opinions.length} < 3)`);
   }
-  const topic = sanitizePromptInput(opts.topic);
+  const topic = clampPromptInput(opts.topic);
   const warnings: string[] = [];
 
   // Phase 1: propositions (from the sample).
@@ -101,7 +105,7 @@ export async function clusterOpinions(
   let bestLabels: number[] = [];
   const maxK = Math.min(5, Math.floor(opinions.length / 2));
   for (let k = 2; k <= maxK; k++) {
-    const result = kmeans(voteMatrix, k, { initialization: "kmeans++" });
+    const result = kmeans(voteMatrix, k, { initialization: "kmeans++", seed: KMEANS_SEED });
     const score = silhouette(voteMatrix, result.clusters);
     if (score > bestScore) {
       bestScore = score;

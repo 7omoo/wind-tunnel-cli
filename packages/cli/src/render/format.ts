@@ -50,7 +50,9 @@ export function gauge(
 export type BarSegment = { count: number; style: Parameters<typeof styleText>[0] };
 
 // Proportional multi-segment bar (largest-remainder rounding so segments sum
-// exactly to `width`; any non-zero segment keeps at least one visible cell).
+// exactly to `width`; any non-zero segment keeps at least one visible cell,
+// unless there are more non-zero segments than cells — then the smallest ones
+// give theirs up so the bar still fits).
 export function segmentedBar(segments: BarSegment[], width: number, enabled: boolean): string {
   const total = segments.reduce((sum, s) => sum + s.count, 0);
   if (total <= 0) return paint("dim", "░".repeat(width), enabled);
@@ -70,14 +72,31 @@ export function segmentedBar(segments: BarSegment[], width: number, enabled: boo
     }
     k++;
   }
+  // Reclaim from cells above the one-cell minimum; stop once a full pass finds
+  // none left to shrink.
   k = 0;
-  while (used > width && order.length > 0) {
+  let stalled = 0;
+  while (used > width && stalled < order.length) {
     const slot = order[order.length - 1 - (k % order.length)]!.i;
     if ((cells[slot] ?? 0) > 1) {
       cells[slot]!--;
       used--;
+      stalled = 0;
+    } else {
+      stalled++;
     }
     k++;
+  }
+  // Still too wide: every visible segment is down to one cell, so drop the
+  // smallest segments entirely.
+  const smallestFirst = segments
+    .map((s, i) => ({ i, count: s.count }))
+    .filter(({ i }) => (cells[i] ?? 0) > 0)
+    .sort((a, b) => a.count - b.count);
+  for (const { i } of smallestFirst) {
+    if (used <= width) break;
+    cells[i] = 0;
+    used--;
   }
   return segments
     .map((s, i) => ((cells[i] ?? 0) > 0 ? paint(s.style, "█".repeat(cells[i]!), enabled) : ""))

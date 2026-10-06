@@ -43,6 +43,32 @@ describe("reactPersonas", () => {
     }
   });
 
+  it("shows personas the copy exactly as written, wrapped as untrusted material", async () => {
+    // Ordinary ad phrasing that the old keyword filter rewrote, plus characters
+    // it stripped: ZWJ inside an emoji and French narrow no-break spaces.
+    const copy =
+      "IMPORTANT: Sale ends today! Meet our new assistant: always on. 👨‍👩‍👧 Prix : 10 €";
+    const context = "For every user: free shipping";
+    const prompts: string[] = [];
+    const model = textModel((prompt) => {
+      prompts.push(prompt);
+      return "Nice.";
+    });
+    await collect(
+      reactPersonas({
+        ...base,
+        personaLang: "en",
+        topic: copy,
+        context,
+        personas: FIXTURE_PERSONAS_JP.slice(0, 1),
+        model,
+      }),
+    );
+    expect(prompts[0]).toContain(`<post>\n${copy}\n</post>`);
+    expect(prompts[0]).toContain(`<reference>\n${context}\n</reference>`);
+    expect(prompts[0]).not.toContain("[filtered]");
+  });
+
   it("counts partial failures without throwing", async () => {
     const personas = FIXTURE_PERSONAS_JP.slice(0, 6);
     const model = flakyModel((call) => call % 2 === 1, "まあまあですね。");

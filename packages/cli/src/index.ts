@@ -6,6 +6,7 @@ import { personasListCommand, personasPullCommand } from "./commands/personas";
 import { resumeCommand } from "./commands/resume";
 import { runCommand } from "./commands/run";
 import { renderError } from "./errors";
+import { integerOption } from "./options";
 
 // Pipe etiquette: `wt-cli detail | head` closes stdout early — exit quietly
 // instead of dumping an EPIPE stack (and never let a broken pipe kill a run
@@ -28,8 +29,6 @@ process.on("unhandledRejection", (e) => {
   process.exit(1);
 });
 
-const int = (value: string): number => Number.parseInt(value, 10);
-
 const program = new Command();
 
 program
@@ -42,15 +41,15 @@ program
   .description("Run the full pipeline: sample personas, react, analyze, cluster, suggest")
   .argument("<message>", "the draft message to test")
   .option("--country <code>", "persona pool country (jp, usa, in, br, fr, kr, vn, be)")
-  .option("--personas <n>", "number of personas", int)
-  .option("--batch <n>", "requests in flight for batched stages", int)
+  .option("--personas <n>", "number of personas", integerOption)
+  .option("--batch <n>", "requests in flight for batched stages", integerOption)
   .option("--situation <id>", "channel context (anon_board, sns_viral, news_comment, ...)")
   .option("--output-lang <lang>", "analysis output language (ja, en)")
   .option("--context <text>", "shared background text given to every persona")
   .option("--personas-file <path>", "JSON persona pool to sample from")
   .option("--region <name>", "restrict to a region of the pool")
-  .option("--age-min <n>", "minimum persona age", int)
-  .option("--age-max <n>", "maximum persona age", int)
+  .option("--age-min <n>", "minimum persona age", integerOption)
+  .option("--age-max <n>", "maximum persona age", integerOption)
   .option("--sex <value>", "restrict persona sex (M / F, matched against the pool)")
   .option("--profile <name>", "model profile (local, hybrid)")
   .option("--model-bulk <spec>", "bulk model (provider:model)")
@@ -74,7 +73,7 @@ program
   .command("detail")
   .description("Every voice in full plus the proposition × group table for a run")
   .argument("[run-id]", "run id or path (default: the latest run)")
-  .option("--group <n>", "only voices from group N", int)
+  .option("--group <n>", "only voices from group N", integerOption)
   .action(async (idOrPath, opts) => {
     process.exitCode = await detailCommand(idOrPath, opts);
   });
@@ -85,7 +84,7 @@ personas
   .command("pull")
   .description("Fetch a country preset from Hugging Face into the local pool")
   .argument("<code>", "country code (jp, usa, in, br, fr, kr, vn, be)")
-  .option("--cap <n>", "per-region sampling cap (default: preset-specific)", int)
+  .option("--cap <n>", "per-region sampling cap (default: preset-specific)", integerOption)
   .action(async (code, opts) => {
     process.exitCode = await personasPullCommand(code, opts);
   });
@@ -107,7 +106,7 @@ program
 program
   .command("doctor")
   .description("Check Ollama reachability, role models, and effective parallelism")
-  .option("--host <url>", "Ollama base URL (default: OLLAMA_HOST or http://localhost:11434)")
+  .option("--host <url>", "Ollama base URL")
   .action(async (opts) => {
     process.exitCode = await runDoctor(opts);
   });

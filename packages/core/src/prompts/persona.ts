@@ -8,6 +8,8 @@
 
 import { PERSONA_LANG_CODES, PERSONA_LANGUAGES } from "../data/languages";
 import type { PersonaLang, Situation } from "../types";
+import { quoteUntrusted } from "../util/sanitize";
+import { postContentBlock } from "./post";
 import { DEFAULT_SITUATION, lengthClause } from "./situation";
 
 // personaLang -> English language name for the "Respond in {X}" instruction.
@@ -35,9 +37,9 @@ export function getPrompt(
   const len = lengthClause(situation, personaLang === "ja");
   if (personaLang !== "ja") {
     const lang = LANGUAGE_NAMES[personaLang];
-    return `Read the following post/ad copy and give your own honest reaction. Maybe you like it, maybe something bothers you, maybe it just doesn't move you — say what you actually feel, true to your values. Respond in ${lang} ${len}.\n\nPost content: ${topic}`;
+    return `Read the following post/ad copy and give your own honest reaction. Maybe you like it, maybe something bothers you, maybe it just doesn't move you — say what you actually feel, true to your values. Respond in ${lang} ${len}.\n\n${postContentBlock(topic, false)}`;
   }
-  return `以下の投稿・広告文を読み、あなた自身の率直な反応を述べてください。良いと感じた点、気になった点、あるいは特に何も感じないなら、そのまま — あなたの価値観に正直に、日本語で${len}回答してください。\n\n投稿内容: ${topic}`;
+  return `以下の投稿・広告文を読み、あなた自身の率直な反応を述べてください。良いと感じた点、気になった点、あるいは特に何も感じないなら、そのまま — あなたの価値観に正直に、日本語で${len}回答してください。\n\n${postContentBlock(topic, true)}`;
 }
 
 // Supplemental context shared by all personas (user-provided background text).
@@ -48,9 +50,9 @@ export function buildContextBlock(context: string, personaLang: PersonaLang): st
   const c = context.trim();
   if (!c) return "";
   if (personaLang === "ja") {
-    return `\n\n【参考情報】\n${c}\n\nこの参考情報も踏まえて、あなた自身の率直な反応を述べてください。`;
+    return `\n\n【参考情報】\n${quoteUntrusted("reference", c)}\n\nこの参考情報も踏まえて、あなた自身の率直な反応を述べてください。`;
   }
-  return `\n\nReference information:\n${c}\n\nTake this reference information into account in your own honest reaction.`;
+  return `\n\nReference information:\n${quoteUntrusted("reference", c)}\n\nTake this reference information into account in your own honest reaction.`;
 }
 
 export function buildPersonaSystemPrompt(

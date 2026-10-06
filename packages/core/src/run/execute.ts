@@ -37,14 +37,17 @@ export async function executeRun(store: RunStore, deps: ExecuteDeps): Promise<Ru
     deps.models.role(role, stage);
   const input = await store.readInput();
   const personaLang = input.personaLang || defaultPersonaLang(input.country);
-  const warnings: string[] = [];
+  // Warnings live in status.json, which accumulates them across resumes; the
+  // summary returns that list so it covers the whole run, like the artifacts.
   const warn = async (message: string) => {
-    warnings.push(message);
     emit({ type: "warning", message });
     await store.patchStatus({ addWarnings: [message] });
   };
 
   try {
+    // A resume is a fresh attempt: the previous attempt's error no longer applies.
+    await store.patchStatus({ error: null });
+
     // ── filter ───────────────────────────────────────────────────────────
     let personasArtifact = await store.readPersonas();
     if (!personasArtifact) {
@@ -211,7 +214,10 @@ export async function executeRun(store: RunStore, deps: ExecuteDeps): Promise<Ru
         country: input.country,
       }),
     );
-    await store.patchStatus({ stage: "done", completedAt: new Date().toISOString() });
+    const status = await store.patchStatus({
+      stage: "done",
+      completedAt: new Date().toISOString(),
+    });
 
     return {
       runId: input.runId,
@@ -219,7 +225,7 @@ export async function executeRun(store: RunStore, deps: ExecuteDeps): Promise<Ru
       opinionCount: opinions.length,
       flameIndex: verdict?.inflammationIndex ?? null,
       riskLevel: verdict?.riskLevel ?? null,
-      warnings,
+      warnings: status.warnings,
     };
   } catch (e) {
     await store

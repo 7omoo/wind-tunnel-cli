@@ -14,9 +14,10 @@ import { generateText, type LanguageModel, Output } from "ai";
 import { z } from "zod";
 import { averageScore, percentages, sentimentCounts } from "../analysis/scoring";
 import { stageTimeoutSignal } from "../models/stages";
+import { postContentBlock } from "../prompts/post";
 import { outputLangName } from "../schemas";
 import type { FlameResult, Opinion, OpinionScore, OutputLang, Trigger } from "../types";
-import { sanitizePromptInput } from "../util/sanitize";
+import { clampPromptInput } from "../util/sanitize";
 import { mapWaves } from "./batch";
 import { type ScoredOpinion, stratifiedSample } from "./sample";
 
@@ -37,7 +38,7 @@ export type ScoreOptions = {
 export type ScoreResult = { scores: OpinionScore[]; warnings: string[] };
 
 export async function scoreOpinions(opts: ScoreOptions): Promise<ScoreResult> {
-  const topic = sanitizePromptInput(opts.topic);
+  const topic = clampPromptInput(opts.topic);
   const batchSize = opts.batchSize ?? SCORE_BATCH_SIZE;
   const lang = outputLangName(opts.outputLang);
   const batches: Opinion[][] = [];
@@ -84,7 +85,7 @@ export async function scoreOpinions(opts: ScoreOptions): Promise<ScoreResult> {
         temperature: 0.1,
         output: Output.object({ schema }),
         system,
-        prompt: `Post content: ${topic}\n\nReactions:\n${reactionsBlock}\n\nScore every reaction.`,
+        prompt: `${postContentBlock(topic, false)}\n\nReactions:\n${reactionsBlock}\n\nScore every reaction.`,
         abortSignal: stageTimeoutSignal("score"),
       });
       // Compose the signed score. Non-neutral intensities clamp to [20, 100] so
@@ -171,7 +172,7 @@ export type VerdictOptions = {
 };
 
 export async function analyzeVerdict(opts: VerdictOptions): Promise<FlameResult> {
-  const topic = sanitizePromptInput(opts.topic);
+  const topic = clampPromptInput(opts.topic);
   const ja = opts.outputLang === "ja";
   const langName = outputLangName(opts.outputLang);
 
@@ -226,7 +227,7 @@ export async function analyzeVerdict(opts: VerdictOptions): Promise<FlameResult>
     abortSignal: stageTimeoutSignal("verdict"),
     output: Output.object({ schema: verdictGenSchema }),
     system,
-    prompt: `${ja ? "投稿内容" : "Post content"}: ${topic}\n\n${statsBlock}\n\n${sampleNote}\n${reactionsBlock}\n\n${instructions}`,
+    prompt: `${postContentBlock(topic, ja)}\n\n${statsBlock}\n\n${sampleNote}\n${reactionsBlock}\n\n${instructions}`,
   });
 
   // triggerAssignment: personaId -> trigger index, for coloring reactions.
