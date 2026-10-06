@@ -19,6 +19,7 @@ import {
 } from "@wind-tunnel/core";
 import {
   clip,
+  filledCells,
   formatDuration,
   gauge,
   paint,
@@ -169,7 +170,7 @@ export function renderSummary(
       const style = groupStyle(gi);
       const bar = single
         ? ""
-        : `  ${paint(style, "█".repeat(Math.max(1, Math.round((size / maxSize) * 16))), color)}`;
+        : `  ${paint(style, "█".repeat(Math.max(1, filledCells(size, maxSize, 16))), color)}`;
       const count = single ? `all ${size}` : String(size);
 
       lines.push("");
