@@ -1,6 +1,6 @@
-// `wt-cli run "<message>"` — the full pipeline against a persona pool.
-// Until `personas pull` lands, the pool comes from --personas-file (a JSON
-// pool, same format custom datasets will use).
+// `wt-cli run "<message>"` — the full pipeline against a persona pool: the
+// local pool database written by `personas pull`, or a JSON pool given with
+// --personas-file. Preflight checks every configured provider before any work.
 
 import {
   CuratedError,
