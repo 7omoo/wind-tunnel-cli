@@ -107,7 +107,7 @@ program
 program
   .command("doctor")
   .description("Check Ollama reachability, role models, and effective parallelism")
-  .option("--host <url>", "Ollama base URL (default: OLLAMA_HOST or http://localhost:11434)")
+  .option("--host <url>", "Ollama base URL")
   .action(async (opts) => {
     process.exitCode = await runDoctor(opts);
   });

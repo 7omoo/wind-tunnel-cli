@@ -80,7 +80,9 @@ directory.
 
 Checks daemon reachability, whether the role models are installed (with the
 exact `ollama pull` commands when not), what is loaded right now, and how to
-raise daemon parallelism.
+raise daemon parallelism. It resolves the host and role models exactly like
+`run` (flags, `WT_*` environment, `config.toml`), so it checks the setup a run
+would actually use.
 
 ## `wt-cli init`
 

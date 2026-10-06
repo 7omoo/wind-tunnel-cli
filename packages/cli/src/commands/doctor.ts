@@ -3,11 +3,12 @@
 // for anything missing. Exit 1 when the local profile could not run as-is.
 
 import {
-  DEFAULT_MODEL_ROLES,
   DEFAULT_OLLAMA_URL,
   diagnoseOllama,
+  type ModelRoles,
   type OllamaDoctorReport,
 } from "@wind-tunnel/core";
+import { type CliFlags, loadConfig, type ResolvedConfig } from "../config";
 
 function formatBytes(bytes: number): string {
   if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(1)} GB`;
@@ -15,12 +16,11 @@ function formatBytes(bytes: number): string {
   return `${bytes} B`;
 }
 
-export function resolveOllamaBaseUrl(flagHost?: string): string {
-  // Precedence: --host flag > OLLAMA_HOST env (Ollama CLI convention) > default.
-  if (flagHost) return flagHost;
-  const env = process.env.OLLAMA_HOST;
-  if (env) return env.startsWith("http") ? env : `http://${env}`;
-  return DEFAULT_OLLAMA_URL;
+// What to diagnose: the host and role models `run` would use, taken from the
+// same resolved config (flags > WT_* env > config.toml > defaults), so a pass
+// here means the real run sees the same daemon and models.
+export function doctorTarget(cfg: ResolvedConfig): { baseUrl: string; roles: ModelRoles } {
+  return { baseUrl: cfg.ollamaHost ?? DEFAULT_OLLAMA_URL, roles: cfg.models };
 }
 
 export function renderDoctorReport(report: OllamaDoctorReport): { text: string; ok: boolean } {
@@ -80,9 +80,8 @@ export function renderDoctorReport(report: OllamaDoctorReport): { text: string; 
   return { text: lines.join("\n"), ok };
 }
 
-export async function runDoctor(opts: { host?: string }): Promise<number> {
-  const baseUrl = resolveOllamaBaseUrl(opts.host);
-  const report = await diagnoseOllama({ baseUrl, roles: DEFAULT_MODEL_ROLES });
+export async function runDoctor(flags: Pick<CliFlags, "host">): Promise<number> {
+  const report = await diagnoseOllama(doctorTarget(await loadConfig(flags)));
   const { text, ok } = renderDoctorReport(report);
   console.log(text);
   return ok ? 0 : 1;
