@@ -1,6 +1,6 @@
 {
   "name": "wind-tunnel-cli",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Generate and cluster synthetic opinions from hundreds of local AI personas — a CLI for testing messages before you publish",
   "type": "module",
   "bin": {
