@@ -119,8 +119,11 @@ Two documented failure modes force this:
   `format` parameter gives real constrained decoding, which small local models
   need to return parseable JSON reliably.
 
-The native provider lets each stage pass `num_ctx`, `format` (JSON schema derived
-from the same Zod schemas that validate the output), and `keep_alive`.
+The native provider lets each stage pass `num_ctx`, `format` (the stage's own
+strict Zod generation schema, converted by the AI SDK), and `keep_alive`.
+Generation schemas live with their stages because most depend on the call
+(batch size, persona ids, cluster count); outputs are then mapped into the
+domain types in `types.ts`, with shared enums in `schemas.ts`.
 
 **Profiles** bundle the choices:
 
@@ -301,12 +304,12 @@ What moves from the original codebase, and what changes on the way:
 | Original | Destination | Notes |
 | --- | --- | --- |
 | `lib/prompts.ts` | `core/src/prompts/` | Keep persona system prompts, situation framing, channel cultures, length policies, manual-context block. Drop: chat/rehearsal framings, research-brief prompt, Malaysia ethnicity clause |
-| `lib/schemas.ts` | `core/src/schemas.ts` | Keep country/situation/lang enums + all LLM output schemas (also reused as Ollama `format` JSON schemas). Countries: the 8 presets. `PersonaLang`: ja/en/fr/ko/pt/vi. Output lang: ja/en. Drop: session/org/project/profile/group CRUD schemas |
+| `lib/schemas.ts` | `core/src/schemas.ts` | Keep country/situation/lang/risk enums. The lenient LLM output schemas were dropped: constrained decoding made them unreachable, and each stage now owns a strict generation schema (§5). Countries: the 8 presets. `PersonaLang`: ja/en/fr/ko/pt/vi. Output lang: ja/en. Drop: session/org/project/profile/group CRUD schemas |
 | `lib/types.ts` | `core/src/types.ts` | Keep Opinion, FlameResult, cluster result types, run results contract. Drop: SaaS API row types, SSE event type, legacy recommendation shape |
 | `lib/clustering.ts` | `core/src/analysis/clustering.ts` | As-is (pure math) |
 | `lib/scoring.ts` | `core/src/analysis/scoring.ts` | Classification/buckets/percentages as-is; CSS color mapping stays out of core (CLI maps sentiment to ANSI) |
 | `lib/opinion-cluster-stages.ts` | `core/src/pipeline/cluster-stages.ts` | LLM stages; JSON parsing hardened via `format` |
-| `lib/llm-json.ts`, `lib/sanitize.ts` | `core/src/util/` | llm-json as-is. sanitize reworked: the keyword filter rewrote ordinary ad copy (`IMPORTANT:`, `assistant:`), so user text is now embedded verbatim inside `<post>` / `<reference>` blocks declared as material, not instructions |
+| `lib/llm-json.ts`, `lib/sanitize.ts` | `core/src/util/` | llm-json dropped (fence-stripping JSON parse; unreachable once every call is constrained). sanitize reworked: the keyword filter rewrote ordinary ad copy (`IMPORTANT:`, `assistant:`), so user text is now embedded verbatim inside `<post>` / `<reference>` blocks declared as material, not instructions |
 | `lib/export.ts` | `core/src/util/export.ts` | CSV + provenance markdown |
 | `api/debate/route.ts` | `core/src/pipeline/react.ts` | SSE route becomes an async generator + shared batch executor |
 | `api/analyze/route.ts` | `core/src/pipeline/analyze.ts` | Split per §4 (scores batched / verdict sampled) |

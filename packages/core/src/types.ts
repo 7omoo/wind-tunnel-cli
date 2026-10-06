@@ -1,15 +1,15 @@
-// Domain types. Enums and LLM output shapes are authored as Zod schemas in
-// schemas.ts and re-derived here via z.infer, so types and validators never drift.
-import type { z } from "zod";
+// Domain types: the shapes the pipeline produces and the run artifacts store.
+// Shared enums come from schemas.ts. Stage outputs are post-processed LLM
+// results (ids assigned, references clamped, scores composed in code), so they
+// are written out here; each stage maps its generation schema's output into
+// these types, and the compiler checks that mapping.
 import type {
   Country as _Country,
   OutputLang as _OutputLang,
   PersonaLang as _PersonaLang,
   RiskLevel as _RiskLevel,
+  Severity as _Severity,
   Situation as _Situation,
-  flameResultSchema,
-  llmOpinionScoreSchema,
-  llmTriggerSchema,
 } from "./schemas";
 
 export type Country = _Country;
@@ -17,6 +17,7 @@ export type OutputLang = _OutputLang;
 export type PersonaLang = _PersonaLang;
 export type Situation = _Situation;
 export type RiskLevel = _RiskLevel;
+export type Severity = _Severity;
 
 // One persona's reaction to the message.
 export type Opinion = {
@@ -54,19 +55,33 @@ export type RawPersona = {
 
 // === Verdict (analyze stage) ===
 
-export type Trigger = z.infer<typeof llmTriggerSchema>;
-export type OpinionScore = z.infer<typeof llmOpinionScoreSchema>;
+// A wording that offends a segment of the audience.
+export type Trigger = {
+  expression: string;
+  offendedSegment: string;
+  severity: Severity;
+  count: number;
+  sampleOpinionIds: string[];
+};
 
-// Raw LLM verdict output (flameResultSchema). Loose, so unrecognized fields pass through.
-export type FlameResultCore = z.infer<typeof flameResultSchema>;
+// Per-opinion sentiment, composed in code from the model's stance + intensity.
+export type OpinionScore = {
+  personaId: string;
+  score: number; // -100 (most critical) .. +100 (most favorable)
+  reason: string;
+};
 
-// Derived fields attached after the LLM call (not LLM output).
-export type FlameResultExtras = {
+// The verdict (analyze.json).
+export type FlameResult = {
+  inflammationIndex: number; // 0..100 backlash index
+  riskLevel: RiskLevel;
+  summary: string;
+  triggers: Trigger[];
+  safeVersion: string;
+  opinionScores?: OpinionScore[];
   // personaId -> index into triggers[], for coloring reactions by trigger.
   triggerAssignment?: Record<string, number>;
 };
-
-export type FlameResult = FlameResultCore & FlameResultExtras;
 
 // === Opinion clustering ===
 
@@ -157,7 +172,7 @@ export type AlternativeSuggestion = {
   text: string;
   strategy: string;
   targetTriggers: number[]; // indexes into FlameResult.triggers[] (may be empty)
-  estimatedRiskReduction: "High" | "Medium" | "Low";
+  estimatedRiskReduction: Severity;
   reasoning: string;
 };
 
