@@ -6,10 +6,8 @@
 import { classifySentiment, RunStore } from "@wind-tunnel/core";
 import { renderError } from "../errors";
 import { clip, displayWidth, paint, useColor, wrap } from "../render/format";
-import { GROUP_STYLES } from "../render/summary";
+import { groupStyle, personaMeta, SENTIMENT_STYLE } from "../render/theme";
 import { latestRunDir, resolveRunDir } from "../runs";
-
-const SENTIMENT_STYLE = { critical: "red", neutral: "gray", favorable: "green" } as const;
 
 // Stance percentage color: strong agreement green, strong disagreement red,
 // the contested middle stays gray.
@@ -54,7 +52,7 @@ export async function detailCommand(
         size: cl?.size ?? 0,
         clusterId: g.clusterId,
         centroid: cl?.centroid ?? [],
-        style: GROUP_STYLES[gi % GROUP_STYLES.length] ?? "cyan",
+        style: groupStyle(gi),
       };
     });
 
@@ -129,13 +127,10 @@ export async function detailCommand(
     );
     for (const { opinion, score } of list) {
       const gi = groupOfPersona.get(opinion.personaId);
-      const dot = gi !== undefined ? c(GROUP_STYLES[gi % GROUP_STYLES.length] ?? "cyan", "●") : " ";
+      const dot = gi !== undefined ? c(groupStyle(gi), "●") : " ";
       const s = score?.score ?? 0;
       const scoreLabel = c(SENTIMENT_STYLE[classifySentiment(s)], String(s).padStart(4));
-      const a = opinion.attributes;
-      const meta = [a.age ? String(a.age) : "", a.occupation, a.location]
-        .filter(Boolean)
-        .join(" · ");
+      const meta = personaMeta(opinion);
       out.push("");
       out.push(`${scoreLabel} ${dot} ${c("dim", clip(meta, w - 8))}`);
       out.push(...wrap(opinion.text, w - 6, "").map((l) => `      ${l}`));

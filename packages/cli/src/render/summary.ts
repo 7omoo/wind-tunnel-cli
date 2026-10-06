@@ -27,6 +27,7 @@ import {
   wrap,
   wrapLines,
 } from "./format";
+import { groupStyle, personaMeta, SENTIMENT_STYLE } from "./theme";
 
 const RISK_STYLE: Record<RiskLevel, Parameters<typeof paint>[0]> = {
   Low: "green",
@@ -34,15 +35,6 @@ const RISK_STYLE: Record<RiskLevel, Parameters<typeof paint>[0]> = {
   High: "red",
   Critical: ["red", "bold"],
 };
-
-// Group accents cycle through distinct colors, shared with `detail`.
-export const GROUP_STYLES: Parameters<typeof paint>[0][] = [
-  "cyan",
-  "magenta",
-  "yellow",
-  "blue",
-  "green",
-];
 
 // First sentence of the verdict prose — the group cards carry the substance,
 // so the long summary paragraph compresses to its opening claim. CJK
@@ -84,11 +76,6 @@ export function pickGroupVoices(
     if (contrast) picked.push(contrast);
   }
   return picked.slice(0, max);
-}
-
-function voiceAttribution(opinion: Opinion): string {
-  const a = opinion.attributes;
-  return [a.age ? String(a.age) : "", a.occupation, a.location].filter(Boolean).join(" · ");
 }
 
 export type SummaryData = {
@@ -140,13 +127,13 @@ export function renderSummary(
     lines.push(
       `${c("bold", "Voices")}          ${segmentedBar(
         [
-          { count: counts.critical, style: "red" },
-          { count: counts.neutral, style: "gray" },
-          { count: counts.favorable, style: "green" },
+          { count: counts.critical, style: SENTIMENT_STYLE.critical },
+          { count: counts.neutral, style: SENTIMENT_STYLE.neutral },
+          { count: counts.favorable, style: SENTIMENT_STYLE.favorable },
         ],
         24,
         color,
-      )}  ${c("red", `critical ${pct.critical}% (${counts.critical})`)} · ${c("gray", `neutral ${pct.neutral}%`)} · ${c("green", `favorable ${pct.favorable}% (${counts.favorable})`)} · mean ${averageScore(data.scores)}`,
+      )}  ${c(SENTIMENT_STYLE.critical, `critical ${pct.critical}% (${counts.critical})`)} · ${c(SENTIMENT_STYLE.neutral, `neutral ${pct.neutral}%`)} · ${c(SENTIMENT_STYLE.favorable, `favorable ${pct.favorable}% (${counts.favorable})`)} · mean ${averageScore(data.scores)}`,
     );
   }
   if (data.verdict?.summary) {
@@ -179,7 +166,7 @@ export function renderSummary(
       const cluster = data.cluster?.clusters.find((cl) => cl.id === g.clusterId);
       const size = cluster?.size ?? 0;
       const name = g.name || `group ${gi + 1}`;
-      const style = GROUP_STYLES[gi % GROUP_STYLES.length] ?? "cyan";
+      const style = groupStyle(gi);
       const bar = single
         ? ""
         : `  ${paint(style, "█".repeat(Math.max(1, Math.round((size / maxSize) * 16))), color)}`;
@@ -194,7 +181,7 @@ export function renderSummary(
       const voices = pickGroupVoices(cluster?.memberIds ?? [], data.opinions, data.scores);
       for (const v of voices) {
         lines.push(...wrapLines(`「${v.opinion.text}」`, WIDTH - 2, "   ", 2).map((l) => `  ${l}`));
-        lines.push(c("dim", `    — ${clip(voiceAttribution(v.opinion), WIDTH - 6)}`));
+        lines.push(c("dim", `    — ${clip(personaMeta(v.opinion), WIDTH - 6)}`));
       }
     });
   }
@@ -204,7 +191,7 @@ export function renderSummary(
   if (minority && (minority.narrative || minority.blindSpots.length > 0)) {
     const profile = data.cluster?.groupProfiles?.find((g) => g.clusterId === minority.clusterId);
     const gi = data.cluster?.groupProfiles?.findIndex((g) => g.clusterId === minority.clusterId);
-    const style = GROUP_STYLES[(gi ?? 0) % GROUP_STYLES.length] ?? "cyan";
+    const style = groupStyle(gi ?? 0);
     const label = profile?.name || `group ${minority.clusterId + 1}`;
     lines.push("");
     lines.push(
