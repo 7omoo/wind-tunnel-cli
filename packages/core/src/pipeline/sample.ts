@@ -35,8 +35,10 @@ export function stratifiedSample(
   } else {
     const target = Math.min(opts.maxCount, sorted.length);
     // 40% most critical, 30% most favorable, 30% random from the middle.
+    // Rounding both shares up can overshoot a tiny target (1 -> 1 + 1), so the
+    // favorable share takes only what the critical one left.
     const nCritical = Math.ceil(target * 0.4);
-    const nFavorable = Math.ceil(target * 0.3);
+    const nFavorable = Math.min(Math.ceil(target * 0.3), target - nCritical);
     const nNeutral = Math.max(0, target - nCritical - nFavorable);
 
     const critical = sorted.slice(0, nCritical);

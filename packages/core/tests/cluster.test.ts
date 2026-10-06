@@ -1,7 +1,7 @@
 import type { LanguageModel } from "ai";
 import { describe, expect, it } from "vitest";
 import { clusterOpinions } from "../src/pipeline/cluster";
-import { classifyStances } from "../src/pipeline/cluster-stages";
+import { classifyStances, labelAxes } from "../src/pipeline/cluster-stages";
 import type { Opinion } from "../src/types";
 import { textModel } from "./helpers/mock-model";
 
@@ -167,6 +167,32 @@ describe("clusterOpinions", () => {
     for (let i = 0; i < 15; i++) expect(await run()).toEqual(first);
   });
 
+  it("degrades to PC axis labels and empty profiles when those calls fail", async () => {
+    // Axis labels and group profiles are cosmetic: their failure must not lose
+    // the clusters, the consensus/division math, or the minority divergences.
+    const model = textModel((prompt) => {
+      if (prompt.includes("principal component axes")) throw new Error("labels down");
+      if (prompt.includes("group profiles")) throw new Error("profiles down");
+      return clusterResponse(prompt);
+    });
+    const uneven = [...OPINIONS, opinion("pro6", "賛成です 6"), opinion("pro7", "賛成です 7")];
+    const { result, warnings } = await clusterOpinions({
+      topic: "テーマ",
+      opinions: uneven,
+      propositionSample: uneven,
+      outputLang: "ja",
+      models: models(model),
+      concurrency: 4,
+    });
+    expect(result.xAxisLabel).toBe("PC1");
+    expect(result.axes?.every((a, i) => a.label === `PC${i + 1}`)).toBe(true);
+    expect(warnings.some((w) => w.includes("group profiles failed"))).toBe(true);
+    expect(result.groupProfiles?.every((g) => g.name === "")).toBe(true);
+    // The minority report keeps its numbers even without the model's narrative.
+    expect(result.minorityReport?.narrative).toBe("");
+    expect(result.minorityReport?.topDivergences.length).toBeGreaterThan(0);
+  });
+
   it("rejects corpora too small to cluster", async () => {
     await expect(
       clusterOpinions({
@@ -222,5 +248,25 @@ describe("classifyStances", () => {
     await expect(promise).rejects.toThrow("all 2 stance batches failed");
     // The cause is kept so the CLI error classifier can see the network layer.
     await expect(promise).rejects.toHaveProperty("cause", outage);
+  });
+});
+
+describe("labelAxes", () => {
+  it("fills blank labels with the PC name, axis by axis", async () => {
+    const model = textModel(() => JSON.stringify({ labels: ["", "強い ←→ 弱い"] }));
+    const labels = await labelAxes({
+      propositions: [
+        { id: "p1", text: "A" },
+        { id: "p2", text: "B" },
+      ],
+      loadings: [
+        [0.9, 0.1],
+        [0.1, 0.9],
+      ],
+      k: 2,
+      outputLang: "ja",
+      model,
+    });
+    expect(labels).toEqual(["PC1", "強い ←→ 弱い"]);
   });
 });

@@ -52,4 +52,32 @@ describe("stratifiedSample", () => {
     expect(Math.min(...scores)).toBe(-100);
     expect(Math.max(...scores)).toBe(29 * 7 - 100);
   });
+
+  // ceil(0.4·1) + ceil(0.3·1) = 2 slots for a target of 1: the same opinion was
+  // taken as both "most critical" and "most favorable", or the cap was exceeded.
+  it("never duplicates an opinion when a single over-long one must be sampled", () => {
+    const out = stratifiedSample([scored("only", -50, "x".repeat(500))], {
+      maxCount: 150,
+      maxChars: 100,
+      random: rng,
+    });
+    expect(out.map((s) => s.opinion.personaId)).toEqual(["only"]);
+  });
+
+  it("respects maxCount even at 1", () => {
+    const items = Array.from({ length: 10 }, (_, i) => scored(`p${i}`, i * 10 - 50));
+    const out = stratifiedSample(items, { maxCount: 1, maxChars: 100000, random: rng });
+    expect(out).toHaveLength(1);
+    expect(out[0]?.score).toBe(-50); // the most critical slot is filled first
+  });
+
+  it("never exceeds maxCount or repeats an opinion for any small cap", () => {
+    const items = Array.from({ length: 12 }, (_, i) => scored(`p${i}`, i * 10 - 60));
+    for (let maxCount = 1; maxCount <= 12; maxCount++) {
+      const out = stratifiedSample(items, { maxCount, maxChars: 100000, random: rng });
+      const ids = out.map((s) => s.opinion.personaId);
+      expect(ids.length).toBeLessThanOrEqual(maxCount);
+      expect(new Set(ids).size).toBe(ids.length);
+    }
+  });
 });
