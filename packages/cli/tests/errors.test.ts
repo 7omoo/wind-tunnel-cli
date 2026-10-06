@@ -1,6 +1,7 @@
 import { PassThrough } from "node:stream";
 import { CuratedError, type ModelProvider } from "@wind-tunnel/core";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { version } from "../package.json";
 import { classifyError, renderError } from "../src/errors";
 
 function connError(code: string): Error {
@@ -126,5 +127,14 @@ describe("renderError", () => {
   it("points unknown errors at WT_DEBUG and the issue tracker, and only those", () => {
     expect(render(new Error("mystery"))).toContain("WT_DEBUG=1");
     expect(render(connError("ECONNREFUSED"))).not.toContain("WT_DEBUG=1");
+  });
+
+  it("reports the manifest's version in the WT_DEBUG line", () => {
+    vi.stubEnv("WT_DEBUG", "1");
+    try {
+      expect(render(new Error("mystery"))).toContain(`[debug] wind-tunnel ${version} ·`);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });

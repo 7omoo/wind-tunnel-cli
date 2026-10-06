@@ -7,10 +7,10 @@
 // ("no persona pool installed — run: …") and pass through untouched.
 
 import { CuratedError, type ModelProvider } from "@wind-tunnel/core";
+import { version } from "../package.json";
 import { paint, useColor } from "./render/format";
 
 const ISSUES_URL = "https://github.com/7omoo/wind-tunnel-cli/issues";
-export const CLI_VERSION = "0.1.0";
 
 export type ErrorKind =
   | "ollama"
@@ -165,7 +165,7 @@ export function renderError(
     stream.write(
       c(
         "dim",
-        `\n[debug] wind-tunnel ${CLI_VERSION} · node ${process.version} · ${process.platform}-${process.arch}\n`,
+        `\n[debug] wind-tunnel ${version} · node ${process.version} · ${process.platform}-${process.arch}\n`,
       ),
     );
     let current: unknown = e;
