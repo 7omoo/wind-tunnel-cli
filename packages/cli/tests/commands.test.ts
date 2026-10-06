@@ -8,9 +8,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { detailCommand } from "../src/commands/detail";
+import { runDoctor } from "../src/commands/doctor";
 import { personasListCommand } from "../src/commands/personas";
 import { resumeCommand } from "../src/commands/resume";
-import { runCommand } from "../src/commands/run";
+import { preflightModels, runCommand } from "../src/commands/run";
 import { type StubOllama, startStubOllama } from "./helpers/stub-ollama";
 
 const POOL = Array.from({ length: 6 }, (_, i) => ({
@@ -148,5 +149,76 @@ describe("commands (in process, against the Ollama stub)", () => {
   it("personas list explains how to get a pool when none is installed", async () => {
     const res = await capture(() => personasListCommand());
     expect(res.stderr + res.stdout).toContain("wt-cli personas pull");
+  });
+});
+
+describe("doctor (in process)", () => {
+  it("passes against a daemon that has the role models", async () => {
+    // The stub reports the stub models as installed.
+    process.env.WT_MODEL_BULK = MODELS.modelBulk;
+    process.env.WT_MODEL_ANALYSIS = MODELS.modelAnalysis;
+    process.env.WT_MODEL_PREMIUM = MODELS.modelPremium;
+    try {
+      const res = await capture(() => runDoctor({ host: stub.url }));
+      expect(res.code).toBe(0);
+      expect(res.stdout).toContain("daemon reachable");
+    } finally {
+      delete process.env.WT_MODEL_BULK;
+      delete process.env.WT_MODEL_ANALYSIS;
+      delete process.env.WT_MODEL_PREMIUM;
+    }
+  });
+
+  it("fails with start instructions when the daemon is down", async () => {
+    const res = await capture(() => runDoctor({ host: "http://127.0.0.1:9" }));
+    expect(res.code).toBe(1);
+    expect(res.stdout).toContain("daemon not reachable");
+  });
+});
+
+describe("preflightModels", () => {
+  async function preflight(models: { bulk: string; analysis: string; premium: string }, cfg = {}) {
+    let stderr = "";
+    const stream = {
+      isTTY: false,
+      write(chunk: string) {
+        stderr += chunk;
+        return true;
+      },
+    };
+    const ok = await preflightModels(models, cfg, stream as unknown as NodeJS.WriteStream);
+    return { ok, stderr };
+  }
+
+  it("needs a Gemini key before any gemini role can run", async () => {
+    const res = await preflight({ bulk: "gemini:a", analysis: "gemini:a", premium: "gemini:a" });
+    expect(res.ok).toBe(false);
+    expect(res.stderr).toContain("GEMINI_API_KEY");
+    expect(
+      (
+        await preflight(
+          { bulk: "gemini:a", analysis: "gemini:a", premium: "gemini:a" },
+          { geminiApiKey: "k" },
+        )
+      ).ok,
+    ).toBe(true);
+  });
+
+  it("names the missing Ollama model to pull", async () => {
+    const res = await preflight(
+      { bulk: "ollama:stub:8b", analysis: "ollama:missing:1b", premium: "ollama:stub:8b" },
+      { ollamaHost: stub.url },
+    );
+    expect(res.ok).toBe(false);
+    expect(res.stderr).toContain("ollama pull missing:1b");
+  });
+
+  it("reports an unreachable LM Studio server", async () => {
+    const res = await preflight(
+      { bulk: "lmstudio:a", analysis: "lmstudio:a", premium: "lmstudio:a" },
+      { lmstudioHost: "http://127.0.0.1:9" },
+    );
+    expect(res.ok).toBe(false);
+    expect(res.stderr).toContain("LM Studio server not reachable");
   });
 });
