@@ -14,7 +14,7 @@ import { executeRun } from "../src/run/execute";
 import { RunStore } from "../src/run/store";
 import type { RunInput, RunProgressEvent } from "../src/run/types";
 import { FIXTURE_PERSONAS_JP } from "./fixtures/personas-jp";
-import { textModel } from "./helpers/mock-model";
+import { failingModel, textModel } from "./helpers/mock-model";
 
 let root: string;
 beforeEach(async () => {
@@ -258,6 +258,38 @@ describe("executeRun", () => {
     const status = await store.readStatus();
     expect(status?.stage).toBe("done");
     expect(status?.warnings.some((w) => w.includes("cluster stage failed"))).toBe(true);
+  });
+
+  it("clears the previous attempt's error when a failed run is resumed to completion", async () => {
+    const store = await RunStore.create(root, input());
+    const daemonDown: PipelineModels = { role: () => failingModel("daemon down") };
+    await expect(executeRun(store, { source: source(), models: daemonDown })).rejects.toThrow(
+      /daemon down/,
+    );
+    expect((await store.readStatus())?.error).toMatch(/daemon down/);
+
+    await executeRun(await RunStore.open(store.dir), {
+      source: source(),
+      models: pipelineModels(),
+    });
+    const status = await store.readStatus();
+    expect(status?.stage).toBe("done");
+    expect(status?.error).toBeNull();
+  });
+
+  it("reports warnings from earlier attempts, matching status.json", async () => {
+    // The summary is rendered from the artifacts of the whole run, so its
+    // warnings must cover the whole run too — otherwise re-opening a finished
+    // run shows a missing cluster with no explanation.
+    const store = await RunStore.create(root, input());
+    await executeRun(store, { source: source(), models: pipelineModels({ failCluster: true }) });
+
+    const summary = await executeRun(await RunStore.open(store.dir), {
+      source: source(),
+      models: pipelineModels(),
+    });
+    expect(summary.warnings.some((w) => w.includes("cluster stage failed"))).toBe(true);
+    expect(summary.warnings).toEqual((await store.readStatus())?.warnings);
   });
 
   it("fails the run and records the error when no personas match", async () => {

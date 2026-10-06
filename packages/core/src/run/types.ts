@@ -96,5 +96,5 @@ export type RunSummary = {
   opinionCount: number;
   flameIndex: number | null;
   riskLevel: string | null;
-  warnings: string[];
+  warnings: string[]; // whole run, across resumes (the status.json list)
 };
