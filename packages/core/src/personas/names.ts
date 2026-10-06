@@ -4,7 +4,7 @@
 import type { Country } from "../types";
 
 export function extractName(professionalPersona: string, country: Country): string {
-  // Non-jp pools use Latin/English-style name extraction. jp cuts before "は".
+  // Non-jp pools use Latin/English-style name extraction; jp has its own below.
   // Non-Latin scripts (kr/vn) aren't matched precisely but fall back to the
   // leading tokens without breaking.
   if (country !== "jp") {
@@ -27,6 +27,20 @@ export function extractName(professionalPersona: string, country: Country): stri
       .slice(0, 3)
       .join(" ");
   }
-  // String.split always returns a non-empty array, so [0] exists (?? "" is a safety valve).
-  return professionalPersona.split("は")[0] ?? "";
+  return extractJapaneseName(professionalPersona);
+}
+
+// Longest jp "name" we accept; anything longer is prose, not a name.
+const JP_NAME_MAX = 20;
+
+// Nemotron jp prose opens with "<name>は、…". The lazy match needs at least one
+// character, so a name that itself starts with は (はるか) survives; failing
+// both patterns (or when the match is too long), the first clause is used,
+// capped, so the prose never becomes the "name".
+function extractJapaneseName(prose: string): string {
+  for (const pattern of [/^(.+?)は[、,]/, /^(.+?)は/]) {
+    const name = prose.match(pattern)?.[1];
+    if (name && name.length <= JP_NAME_MAX) return name;
+  }
+  return (prose.split(/[、。,.]/)[0] ?? "").slice(0, JP_NAME_MAX);
 }

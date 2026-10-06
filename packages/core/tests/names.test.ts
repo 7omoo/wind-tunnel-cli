@@ -38,4 +38,15 @@ describe("extractName", () => {
   it('cuts before "は" for jp prose', () => {
     expect(extractName("田中太郎は、横浜市在住の34歳の看護師。", "jp")).toBe("田中太郎");
   });
+
+  // Splitting at the first "は" broke two ways: a name that starts with は
+  // came back empty, and prose without は became the whole "name".
+  it("keeps a jp name that itself starts with は", () => {
+    expect(extractName("はるかは、札幌在住の大学生。", "jp")).toBe("はるか");
+  });
+
+  it("falls back to the first clause, capped, when jp prose has no は", () => {
+    expect(extractName("横浜市在住の看護師、田中。", "jp")).toBe("横浜市在住の看護師");
+    expect(extractName("あ".repeat(80), "jp")).toHaveLength(20);
+  });
 });
