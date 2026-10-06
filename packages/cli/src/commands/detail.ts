@@ -3,7 +3,7 @@
 // most-critical first. Defaults to the latest run; `--group N` narrows to one
 // group. Plain stdout, so `wt-cli detail | less` pages naturally.
 
-import { classifySentiment } from "@wind-tunnel/core";
+import { classifySentiment, isConsensus } from "@wind-tunnel/core";
 import { renderError } from "../errors";
 import { clip, displayWidth, paint, useColor, wrap } from "../render/format";
 import { groupStyle, personaMeta, SENTIMENT_STYLE } from "../render/theme";
@@ -93,7 +93,11 @@ export async function detailCommand(
           )
           .join("")}`,
       );
-      const consensusIds = new Set((cluster.consensus ?? []).map((x) => x.propositionId));
+      // Re-checked on read: runs saved before isConsensus stored split
+      // propositions under consensus too.
+      const consensusIds = new Set(
+        (cluster.consensus ?? []).filter(isConsensus).map((x) => x.propositionId),
+      );
       cluster.propositions.forEach((p, j) => {
         const marker = consensusIds.has(p.id) ? "≡ " : "  ";
         const label = clip(`${marker}${p.text}`, labelW - 1);

@@ -179,5 +179,5 @@ export type AlternativeSuggestion = {
 
 export type AlternativeSuggestions = {
   alternatives: AlternativeSuggestion[]; // typically 2-4
-  commonGround: string; // one sentence all groups share
+  commonGround: string; // one sentence all groups share; "" without consensus
 };

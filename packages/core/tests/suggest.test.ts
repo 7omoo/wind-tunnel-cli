@@ -124,6 +124,63 @@ describe("suggestAlternatives", () => {
     expect(result.alternatives.every((a) => a.targetTriggers.length === 0)).toBe(true);
   });
 
+  it("passes only real consensus, so a run saved before the threshold reads as no agreement", async () => {
+    // cluster.json written before isConsensus existed can still list a
+    // proposition the groups split on; resume feeds it straight to suggest.
+    const legacy: OpinionClusterResult = {
+      ...CLUSTER,
+      consensus: [
+        { propositionId: "p9", text: "Split view", score: 0.9, groupSupport: [0.97, 0.09, 0.96] },
+      ],
+    };
+    const prompts: Record<string, string> = {};
+    for (const outputLang of ["en", "ja"] as const) {
+      const { model, prompts: seen } = suggestModel([alternative([0]), alternative([])]);
+      await suggestAlternatives({
+        topic: "t",
+        cluster: legacy,
+        verdict: VERDICT,
+        outputLang,
+        model,
+      });
+      prompts[outputLang] = seen[0] ?? "";
+    }
+    expect(prompts.en).toContain("=== Points of Agreement ===\nNone\n");
+    expect(prompts.ja).toContain("=== 合意事項 ===\nなし\n");
+    expect(prompts.en).not.toContain("Split view");
+
+    const { model, prompts: kept } = suggestModel([alternative([0]), alternative([])]);
+    await suggestAlternatives({
+      topic: "t",
+      cluster: CLUSTER,
+      verdict: VERDICT,
+      outputLang: "en",
+      model,
+    });
+    expect(kept[0]).toContain("=== Points of Agreement ===\n- Pay matters");
+  });
+
+  it("drops common ground the groups never agreed on", async () => {
+    // 2026-10-06 run: no proposition reached consensus, yet the model still
+    // answered "All groups agree that improving work-life balance ... is a
+    // valuable goal" — the instruction asked for a value all groups share.
+    for (const cluster of [EMPTY_CLUSTER, CLUSTER]) {
+      const { model, prompts } = suggestModel([alternative([0]), alternative([])]);
+      const result = await suggestAlternatives({
+        topic: "t",
+        cluster,
+        verdict: VERDICT,
+        outputLang: "en",
+        model,
+      });
+      expect(prompts[0]).toContain('empty string ("") when Points of Agreement is None');
+      // The model ignoring that instruction must not reach the result.
+      expect(result.commonGround).toBe(
+        cluster.consensus.length > 0 ? "Everyone wants fairness." : "",
+      );
+    }
+  });
+
   it("uses Japanese labels for Japanese output", async () => {
     const { model, prompts } = suggestModel([alternative([0]), alternative([])]);
     await suggestAlternatives({

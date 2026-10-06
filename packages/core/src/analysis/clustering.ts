@@ -153,8 +153,10 @@ function sortedGroupLabels(labels: number[]): number[] {
 }
 
 /**
- * Consensus detection (product of Laplace-smoothed per-group agree rates).
+ * Consensus ranking (product of Laplace-smoothed per-group agree rates).
  * Propositions all groups agree on score highest. Sorted by score, descending.
+ * A ranking, not a verdict: filter with isConsensus before calling a row
+ * consensus.
  */
 export function detectConsensus(
   voteMatrix: number[][],
@@ -176,6 +178,24 @@ export function detectConsensus(
       return { propositionId: prop.id, text: prop.text, score, groupSupport };
     })
     .sort((a, b) => b.score - a.score);
+}
+
+// Minimum per-group support for a proposition to count as consensus.
+const CONSENSUS_MIN_SUPPORT = 0.6;
+
+/**
+ * Whether a detectConsensus row is actually consensus: every group's support
+ * is at least CONSENSUS_MIN_SUPPORT (with a single group, that group alone).
+ * detectConsensus only ranks — by the product of the supports, with no
+ * threshold — so a proposition the groups split on (support 0.97 / 0.09 / 0.96
+ * / 0.40 / 0.10) could still top the list and be reported as consensus.
+ * Same definition as the hosted app, which fixed the same symptom on
+ * 2026-09-29 and filters both its stored output and its screen with it; the
+ * CLI copy predated that fix. Callers reading saved runs filter with it too,
+ * since runs written before this check still carry unfiltered rows.
+ */
+export function isConsensus(c: Pick<OpinionClusterConsensus, "groupSupport">): boolean {
+  return c.groupSupport.length > 0 && c.groupSupport.every((p) => p >= CONSENSUS_MIN_SUPPORT);
 }
 
 /**

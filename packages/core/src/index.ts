@@ -6,6 +6,7 @@ export {
   computeBridging,
   detectConsensus,
   detectDivision,
+  isConsensus,
   silhouette,
 } from "./analysis/clustering";
 export {

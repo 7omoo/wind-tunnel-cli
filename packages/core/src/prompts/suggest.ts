@@ -2,6 +2,7 @@
 // that turns the cluster analysis and the verdict into rewrite options. The
 // stage owns the schema and the trigger-index clamping; this module the wording.
 
+import { isConsensus } from "../analysis/clustering";
 import { outputLangName } from "../schemas";
 import type { FlameResult, OpinionClusterResult, OutputLang } from "../types";
 import { escapeForPrompt } from "../util/sanitize";
@@ -21,9 +22,12 @@ export function suggestPrompts(opts: SuggestPromptInput): { system: string; prom
   const { cluster, verdict, topic } = opts;
 
   // All cluster/verdict text is model-generated upstream — escape before
-  // re-embedding (indirect prompt-injection defense).
+  // re-embedding (indirect prompt-injection defense). Consensus is re-checked:
+  // resume hands over cluster.json as saved, and runs written before
+  // isConsensus can list propositions the groups split on.
   const consensusBlock =
     cluster.consensus
+      .filter(isConsensus)
       .slice(0, 5)
       .map((c) => `- ${escapeForPrompt(c.text)} (${ja ? "合意度" : "agreement"}: ${c.score})`)
       .join("\n") || none;
@@ -98,13 +102,13 @@ Based on the opinion-cluster analysis data below (consensus, divisive points, br
 - targetTriggers は上記「炎上トリガー」の番号 ([0] 始まり) の配列。その案で消せるトリガーを指す。該当が無ければ空配列
 - estimatedRiskReduction は High / Medium / Low の定性評価 (スコアの再計算はしない)
 - 対立事項の語彙は避け、合意事項とブリッジング命題の語彙を活用。少数派の盲点にも配慮
-- commonGround は全グループが共有する根本的な価値観を 1 文で`
+- commonGround は「合意事項」に挙がった、全グループが共有する価値観を 1 文で。「合意事項」が「なし」なら空文字列 ("") にし、合意を作り出さない`
     : `Guidance:
 - alternatives: 2-4 rewrites that lower backlash risk while preserving the original intent — specific and copy-paste ready
 - targetTriggers: array of 0-based indexes into "Backlash Triggers" above that the option removes; empty if none
 - estimatedRiskReduction: qualitative High / Medium / Low (do NOT re-score)
 - Avoid divisive vocabulary; use consensus and bridging vocabulary; mind the minority blind spots
-- commonGround: the fundamental value all groups share, one sentence`;
+- commonGround: the value all groups share, one sentence, grounded in Points of Agreement; an empty string ("") when Points of Agreement is None — do not invent agreement`;
 
   return {
     system,
