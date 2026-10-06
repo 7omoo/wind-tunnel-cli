@@ -50,6 +50,21 @@ describe("segmentedBar", () => {
     expect(bar).toContain("[32m"); // the green escape survives
   });
 
+  it("still fits the width when there are more non-zero segments than cells", () => {
+    // Previously an endless loop: no cell could shrink below its one-cell minimum.
+    expect(plain([1, 1, 1, 1, 1], 3)).toBe("█".repeat(3));
+    const bar = segmentedBar(
+      [
+        { count: 9, style: "red" },
+        { count: 1, style: "green" },
+        { count: 5, style: "blue" },
+      ],
+      2,
+      true,
+    );
+    expect(bar).not.toContain("[32m"); // the smallest segment gives up its cell
+  });
+
   it("renders an empty total as a dim track", () => {
     expect(segmentedBar([], 10, false)).toBe("░".repeat(10));
     expect(segmentedBar([{ count: 0, style: "red" }], 10, false)).toBe("░".repeat(10));
