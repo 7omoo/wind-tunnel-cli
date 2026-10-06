@@ -1,4 +1,5 @@
 import { Command } from "commander";
+import { version } from "../package.json";
 import { detailCommand } from "./commands/detail";
 import { runDoctor } from "./commands/doctor";
 import { initCommand } from "./commands/init";
@@ -36,7 +37,7 @@ program
   .description(
     "Generate and cluster synthetic opinions from hundreds of local AI personas — a CLI for testing messages before you publish",
   )
-  .version("0.1.0");
+  .version(version); // single source: the published manifest
 
 program
   .command("run")
