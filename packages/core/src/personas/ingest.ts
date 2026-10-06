@@ -16,7 +16,7 @@ import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import { DuckDBConnection, DuckDBInstance } from "@duckdb/node-api";
 import type { Country } from "../types";
-import { ensurePoolSchema } from "./pool-schema";
+import { ensurePoolSchema, PERSONA_COLUMNS } from "./pool-schema";
 import { COUNTRY_PRESETS, presetGlob, SEX_NORM_SQL } from "./presets";
 
 export type IngestProgress =
@@ -98,8 +98,7 @@ export async function pullCountryPool(opts: {
           SELECT *, row_number() OVER (PARTITION BY region ORDER BY random()) AS __rn FROM src
         ),
         have AS (SELECT region AS __region, count(*) AS __have FROM stage GROUP BY region)
-        SELECT uuid, country, age, sex, sex_norm, occupation, marital_status,
-               education_level, region, locality, professional_persona, persona
+        SELECT ${PERSONA_COLUMNS.join(", ")}
         FROM ranked LEFT JOIN have ON ranked.region = have.__region
         WHERE __rn <= ${cap} - COALESCE(__have, 0)`);
       filesRead = index + 1;

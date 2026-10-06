@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { DuckDBConnection, DuckDBInstance } from "@duckdb/node-api";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { openPersonaPool } from "../src/personas/pool";
-import { ensurePoolSchema } from "../src/personas/pool-schema";
+import { ensurePoolSchema, PERSONA_COLUMNS } from "../src/personas/pool-schema";
 
 let dir: string;
 let poolPath: string;
@@ -118,6 +118,22 @@ describe("openPersonaPool", () => {
       expect(await pool.sample({ country: "fr", count: 10 })).toEqual([]);
     } finally {
       pool.close();
+    }
+  });
+});
+
+describe("pool schema", () => {
+  // Ingest INSERTs and pool SELECTs both rely on PERSONA_COLUMNS matching the
+  // table's column order exactly.
+  it("PERSONA_COLUMNS lists the persona table's columns in table order", async () => {
+    const instance = await DuckDBInstance.create(poolPath);
+    const connection = await DuckDBConnection.create(instance);
+    try {
+      await ensurePoolSchema(connection);
+      const rows = await (await connection.run("DESCRIBE persona")).getRows();
+      expect(rows.map((r) => String(r[0]))).toEqual([...PERSONA_COLUMNS]);
+    } finally {
+      connection.closeSync();
     }
   });
 });
