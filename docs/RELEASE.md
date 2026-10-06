@@ -59,16 +59,30 @@ then edit). No CHANGELOG.md file to maintain in-repo.
 # from a clean main with CI green
 pnpm install && pnpm check && pnpm typecheck && pnpm test && pnpm build
 
-# dry run: verify the tarball contains dist/ + manifest only
-cd packages/cli && npm publish --dry-run
+# bump, then commit + tag by hand (npm creates neither inside this monorepo)
+cd packages/cli && npm version minor          # or patch
+git commit -am "chore(release): vX.Y.Z" && git tag -a vX.Y.Z -m "vX.Y.Z"
 
-npm publish            # first publish claims the name `wind-tunnel-cli`
-git tag -a v0.1.0 -m "v0.1.0" && git push --follow-tags
-gh release create v0.1.0 --generate-notes
+# dry run: dist/ + README + licenses + manifest, version X.Y.Z
+npm publish --dry-run
+
+npm login                       # if `npm whoami` fails
+npm publish --auth-type=web     # 2FA is a security key (Touch ID): approve in the browser
+
+# only after `npm view wind-tunnel-cli@X.Y.Z version` answers
+git push --follow-tags
+gh release create vX.Y.Z --generate-notes     # then edit: lead with output changes
 ```
 
-(From the second release on, bump with `npm version patch|minor`, then commit
-and tag by hand — see the versioning policy above.)
+The account's 2FA is a security key (passkey) with "require 2FA for write
+actions" on, so there is no authenticator code: a plain `npm publish` stops at
+"Enter OTP". `--auth-type=web` prints a URL instead; opening it in the browser
+and approving with Touch ID completes the publish. (A recovery code also works
+at the OTP prompt, but each one is single-use.)
+
+Push the tag only once the registry shows the version, so npm and git never
+disagree. `npm view` may serve the previous version for a minute; query the
+exact version (`wind-tunnel-cli@X.Y.Z`, `--prefer-online`) to confirm.
 
 The README ships in the tarball (copied by `prepack`, like the license files),
 so the npm page shows it; check it appears in the dry run's file list.
