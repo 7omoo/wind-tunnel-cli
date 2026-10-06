@@ -156,7 +156,9 @@ WT_MODEL_PREMIUM=lmstudio:qwen/qwen3-4b-2507 wt-cli run "draft copy..."
 - **Expect slower runs than Ollama.** LM Studio compiles a grammar for each new
   JSON schema the first time it sees it (up to about a minute), and the first
   JSON call after the reaction stage is retried once because LM Studio answers
-  it without the schema. A 16-persona run on `qwen/qwen3-4b-2507` took about
+  it without the schema
+  ([lmstudio-bug-tracker#2476](https://github.com/lmstudio-ai/lmstudio-bug-tracker/issues/2476)).
+  A 16-persona run on `qwen/qwen3-4b-2507` took about
   6 minutes on an M-series Mac.
 
 ## Run artifacts
