@@ -5,6 +5,7 @@
 
 import { generateText, type LanguageModel, Output } from "ai";
 import { z } from "zod";
+import { isConsensus } from "../analysis/clustering";
 import { ANALYSIS_TEMPERATURE, stageTimeoutSignal } from "../models/stages";
 import { suggestPrompts } from "../prompts/suggest";
 import { severitySchema } from "../schemas";
@@ -69,6 +70,9 @@ export async function suggestAlternatives(opts: SuggestOptions): Promise<Alterna
       estimatedRiskReduction: a.estimatedRiskReduction,
       reasoning: a.reasoning,
     })),
-    commonGround: output.commonGround,
+    // Common ground claims every group agrees. Without a consensus proposition
+    // there is no evidence for that, and small models fill the sentence in
+    // anyway — so it is dropped rather than trusted to the prompt.
+    commonGround: opts.cluster.consensus.some(isConsensus) ? output.commonGround : "",
   };
 }

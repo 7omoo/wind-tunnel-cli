@@ -160,6 +160,27 @@ describe("suggestAlternatives", () => {
     expect(kept[0]).toContain("=== Points of Agreement ===\n- Pay matters");
   });
 
+  it("drops common ground the groups never agreed on", async () => {
+    // 2026-10-06 run: no proposition reached consensus, yet the model still
+    // answered "All groups agree that improving work-life balance ... is a
+    // valuable goal" — the instruction asked for a value all groups share.
+    for (const cluster of [EMPTY_CLUSTER, CLUSTER]) {
+      const { model, prompts } = suggestModel([alternative([0]), alternative([])]);
+      const result = await suggestAlternatives({
+        topic: "t",
+        cluster,
+        verdict: VERDICT,
+        outputLang: "en",
+        model,
+      });
+      expect(prompts[0]).toContain('empty string ("") when Points of Agreement is None');
+      // The model ignoring that instruction must not reach the result.
+      expect(result.commonGround).toBe(
+        cluster.consensus.length > 0 ? "Everyone wants fairness." : "",
+      );
+    }
+  });
+
   it("uses Japanese labels for Japanese output", async () => {
     const { model, prompts } = suggestModel([alternative([0]), alternative([])]);
     await suggestAlternatives({

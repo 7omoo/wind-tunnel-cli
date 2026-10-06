@@ -69,6 +69,8 @@ A proposition counts as consensus only when every group's agree rate is at
 least 0.6 (with one group, that group alone) — the hosted app's definition.
 Ranking by the product of the rates alone would let a proposition two groups
 reject still head the list; when nothing clears the bar, consensus is empty.
+The suggest stage's common ground ("all groups share ...") is left empty then
+too, rather than letting the model assert agreement no proposition shows.
 
 Stages run strictly in sequence (verdict, then cluster, then suggest); only the
 work inside a stage is batched. Stage 2 emits opinions through an async generator; the CLI
