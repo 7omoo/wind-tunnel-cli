@@ -163,6 +163,15 @@ describe.skipIf(!existsSync(DIST))("wt-cli built binary against a stub daemon", 
     expect(res.stdout).toContain("Reaction"); // full voices
   });
 
+  it("reports the version of the published manifest", async () => {
+    const manifest = JSON.parse(
+      await readFile(fileURLToPath(new URL("../package.json", import.meta.url)), "utf8"),
+    );
+    const res = await cli(["--version"]);
+    expect(res.code).toBe(0);
+    expect(res.stdout.trim()).toBe(manifest.version);
+  });
+
   it("fails fast with a clear message when the daemon is unreachable", {
     timeout: 60_000,
   }, async () => {
