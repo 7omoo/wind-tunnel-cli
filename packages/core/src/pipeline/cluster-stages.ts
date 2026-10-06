@@ -5,7 +5,7 @@
 
 import { generateText, type LanguageModel, Output } from "ai";
 import { z } from "zod";
-import { findMinorityDivergence } from "../analysis/clustering";
+import { findMinorityDivergence, topPropositionsByAxis } from "../analysis/clustering";
 import { ANALYSIS_TEMPERATURE, stageTimeoutSignal } from "../models/stages";
 import {
   axisLabelPrompts,
@@ -125,12 +125,7 @@ export async function labelAxes(opts: {
   model: LanguageModel;
 }): Promise<string[]> {
   const fallback = Array.from({ length: opts.k }, (_, i) => `PC${i + 1}`);
-  const topByAxis = Array.from({ length: opts.k }, (_, c) =>
-    opts.propositions
-      .map((p, i) => ({ text: p.text, loading: opts.loadings[i]?.[c] ?? 0 }))
-      .sort((a, b) => Math.abs(b.loading) - Math.abs(a.loading))
-      .slice(0, 3),
-  );
+  const topByAxis = topPropositionsByAxis(opts.propositions, opts.loadings, opts.k);
   try {
     const schema = z.object({ labels: z.array(z.string()).length(opts.k) });
     const { output } = await generateText({
