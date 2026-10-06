@@ -22,6 +22,7 @@ import { type LanguageModel, wrapLanguageModel } from "ai";
 import { createOllama, type OllamaProvider } from "ai-sdk-ollama";
 import { DEFAULT_LMSTUDIO_URL } from "../lmstudio/client";
 import { reasoningAsJsonTextMiddleware } from "../lmstudio/reasoning-workaround";
+import { retryUnenforcedJsonMiddleware } from "../lmstudio/structured-output-retry";
 import { DEFAULT_OLLAMA_URL } from "../ollama/client";
 import { CuratedError } from "../util/curated-error";
 import { DEFAULT_KEEP_ALIVE, type PipelineStage, STAGE_NUM_CTX } from "./stages";
@@ -123,7 +124,8 @@ export function resolveModel(
     const baseUrl = settings.lmstudioBaseUrl ?? DEFAULT_LMSTUDIO_URL;
     return wrapLanguageModel({
       model: lmstudioProvider(baseUrl)(parsed.name),
-      middleware: reasoningAsJsonTextMiddleware,
+      // Outer first: the retry judges the answer after reasoning recovery.
+      middleware: [retryUnenforcedJsonMiddleware, reasoningAsJsonTextMiddleware],
     });
   }
   // gemini

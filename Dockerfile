@@ -1,6 +1,6 @@
 # Wind Tunnel CLI image. Intended pairings:
 #   - Linux + NVIDIA: docker compose up (bundled ollama service, GPU passthrough)
-#   - CI / cloud runs: this image with a remote OLLAMA_HOST or a gemini profile
+#   - CI / cloud runs: this image with a remote OLLAMA_HOST, or all roles on gemini:
 #
 # Apple Silicon note: containers cannot reach the GPU (Metal), so local Mac use
 # should run both Ollama AND the CLI natively (npm). If you must run this image

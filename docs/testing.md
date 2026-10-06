@@ -64,7 +64,7 @@ WT_TEST_HF=1 pnpm exec vitest run packages/core/tests/ingest-hf.test.ts   # live
 CI (`.github/workflows/ci.yml`) runs Biome → typecheck → build → the full
 suite with coverage → a smoke of the built binary, on Node 20 and 22.
 
-Reading the coverage number (~81% lines / ~71% branches without a daemon):
+Reading the coverage number (~84% lines / ~74% branches without a daemon):
 the engine (`core/src/pipeline`, `run`, `analysis`, `util`) sits at 90-100%,
 and layer 3 makes the CLI commands visible. What stays low is deliberate:
 `cli/src/index.ts` is argv wiring exercised by layer 4 in a subprocess (which

@@ -1,5 +1,5 @@
 // Persona pool abstraction. The pipeline depends on this interface only;
-// implementations are the SQLite pool (ingest) and the JSON source (custom
+// implementations are the DuckDB pool (ingest) and the JSON source (custom
 // files, fixtures).
 
 import type { Country, RawPersona } from "../types";

@@ -22,9 +22,11 @@ export function scoreSystemPrompt(outputLang: OutputLang): string {
 - intensity 20-100: how strongly the stance is expressed (mild 20-50, strong 60-100; ignored for neutral)`;
 }
 
+// Reactions are numbered; the answer is one entry per reaction in the same
+// order (persona ids never reach the model — the stage maps by position).
 export function scoreUserPrompt(topic: string, batch: Opinion[]): string {
-  const reactionsBlock = batch.map((o) => `[${o.personaId}] ${o.text}`).join("\n");
-  return `${postContentBlock(topic, false)}\n\nReactions:\n${reactionsBlock}\n\nScore every reaction.`;
+  const reactionsBlock = batch.map((o, i) => `Reaction ${i + 1}: ${o.text}`).join("\n");
+  return `${postContentBlock(topic, false)}\n\nReactions (${batch.length}, in order):\n${reactionsBlock}\n\nScore every reaction: one entry per reaction, in the same order.`;
 }
 
 // === Verdict (analysis model, one call on a budgeted sample) ===
