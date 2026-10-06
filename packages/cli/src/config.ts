@@ -40,6 +40,7 @@ const fileSchema = z.object({
     })
     .optional(),
   ollama: z.object({ host: z.string().optional() }).optional(),
+  lmstudio: z.object({ host: z.string().optional() }).optional(),
 });
 export type FileConfig = z.infer<typeof fileSchema>;
 
@@ -62,6 +63,7 @@ export type ResolvedConfig = {
   models: ModelRoles;
   geminiApiKey?: string;
   ollamaHost?: string;
+  lmstudioHost?: string;
   run: {
     country: z.infer<typeof countrySchema>;
     personas: number;
@@ -70,6 +72,12 @@ export type ResolvedConfig = {
     situation: z.infer<typeof situationSchema>;
   };
 };
+
+// Hosts may be given as "host:port"; the HTTP clients need a full base URL.
+function withScheme(host: string | undefined): string | undefined {
+  if (!host) return undefined;
+  return host.startsWith("http") ? host : `http://${host}`;
+}
 
 function intFrom(value: string | number | undefined, label: string): number | undefined {
   if (value === undefined) return undefined;
@@ -145,12 +153,11 @@ export function resolveConfig(opts: {
   );
 
   // Ollama host: flag > WT_OLLAMA_HOST > OLLAMA_HOST (ollama CLI convention) > file.
-  const rawHost = flags.host ?? env.WT_OLLAMA_HOST ?? env.OLLAMA_HOST ?? file.ollama?.host;
-  const ollamaHost = rawHost
-    ? rawHost.startsWith("http")
-      ? rawHost
-      : `http://${rawHost}`
-    : undefined;
+  const ollamaHost = withScheme(
+    flags.host ?? env.WT_OLLAMA_HOST ?? env.OLLAMA_HOST ?? file.ollama?.host,
+  );
+  // LM Studio host: WT_LMSTUDIO_HOST > file (no flag: --host stays Ollama's).
+  const lmstudioHost = withScheme(env.WT_LMSTUDIO_HOST ?? file.lmstudio?.host);
 
   const geminiApiKey = env.GEMINI_API_KEY ?? env.WT_GEMINI_API_KEY ?? file.model?.gemini_api_key;
 
@@ -159,6 +166,7 @@ export function resolveConfig(opts: {
     models,
     ...(geminiApiKey ? { geminiApiKey } : {}),
     ...(ollamaHost ? { ollamaHost } : {}),
+    ...(lmstudioHost ? { lmstudioHost } : {}),
     run: { country, personas, batch, outputLang, situation },
   };
 }

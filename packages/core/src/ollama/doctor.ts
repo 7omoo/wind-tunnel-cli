@@ -7,7 +7,7 @@
 // detects saturation empirically.
 
 import type { ModelRoles } from "../models/defaults";
-import { parseModelSpec } from "../models/registry";
+import { type ModelProvider, parseModelSpec } from "../models/registry";
 import {
   DEFAULT_OLLAMA_URL,
   getOllamaVersion,
@@ -21,9 +21,9 @@ import {
 export type RoleCheck = {
   role: string;
   spec: string;
-  // "ollama" role models can be verified against /api/tags; cloud providers
-  // can't be checked from here -> installed: null.
-  provider: "ollama" | "gemini";
+  // "ollama" role models can be verified against /api/tags; other providers
+  // are not checked here (LM Studio has its own doctor) -> installed: null.
+  provider: ModelProvider;
   installed: boolean | null;
   // `ollama pull` argument when missing (ollama provider only).
   pullName?: string;

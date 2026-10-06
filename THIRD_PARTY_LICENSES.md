@@ -42,6 +42,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
+### @ai-sdk/openai-compatible@3.0.36 — Apache-2.0
+
+```
+Copyright 2023 Vercel, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+```
+
 ### @ai-sdk/provider@4.0.7 — Apache-2.0
 
 ```
@@ -61,6 +79,10 @@ limitations under the License.
 ```
 
 ### @ai-sdk/provider-utils@5.0.27 — Apache-2.0
+
+_No license file shipped in the package; license declared as Apache-2.0._
+
+### @ai-sdk/provider-utils@5.0.29 — Apache-2.0
 
 _No license file shipped in the package; license declared as Apache-2.0._
 

@@ -7,10 +7,13 @@ import {
   dataRoot,
   defaultPersonaLang,
   defaultPoolPath,
+  diagnoseLmStudio,
   diagnoseOllama,
   executeRun,
+  loadCommand,
   loadJsonPersonaSource,
   type ModelRoles,
+  needsLargerContext,
   newRunId,
   openPersonaPool,
   type PersonaPool,
@@ -41,7 +44,7 @@ export type RunFlags = CliFlags & {
 // API key. Prints the exact fix and returns false.
 export async function preflightModels(
   models: ModelRoles,
-  cfg: Pick<ResolvedConfig, "geminiApiKey" | "ollamaHost">,
+  cfg: Pick<ResolvedConfig, "geminiApiKey" | "ollamaHost" | "lmstudioHost">,
   stderr: NodeJS.WriteStream = process.stderr,
 ): Promise<boolean> {
   const specs = Object.values(models).map(parseModelSpec);
@@ -64,6 +67,29 @@ export async function preflightModels(
         if (check.installed === false) {
           problems.push(
             `model for ${check.role} not installed — run: ollama pull ${check.pullName}`,
+          );
+        }
+      }
+    }
+  }
+
+  if (specs.some((s) => s.provider === "lmstudio")) {
+    const report = await diagnoseLmStudio({ baseUrl: cfg.lmstudioHost, roles: models });
+    if (!report.reachable) {
+      problems.push(
+        `LM Studio server not reachable at ${report.baseUrl} — start it (lms server start, or the Developer tab in the app)`,
+      );
+    } else {
+      for (const check of report.roleChecks) {
+        if (!check.available) {
+          problems.push(
+            `model for ${check.role} not available in LM Studio — run: lms get ${check.model}`,
+          );
+        } else if (needsLargerContext(check)) {
+          const loaded =
+            check.loadedContext === null ? "not loaded" : `loaded with ${check.loadedContext}`;
+          problems.push(
+            `model for ${check.role} is ${loaded}; analysis prompts need more context — run: ${loadCommand(check)}`,
           );
         }
       }
@@ -150,7 +176,7 @@ export async function runCommand(message: string, flags: RunFlags): Promise<numb
 // Shared by run and resume: models, renderer, execution, summary.
 export async function executeAndRender(
   store: RunStore,
-  cfg: Pick<ResolvedConfig, "geminiApiKey" | "ollamaHost">,
+  cfg: Pick<ResolvedConfig, "geminiApiKey" | "ollamaHost" | "lmstudioHost">,
   stderr: NodeJS.WriteStream,
   source: PersonaSource = NO_SOURCE,
 ): Promise<number> {
@@ -158,6 +184,7 @@ export async function executeAndRender(
   const input = await store.readInput();
   const models = await createPipelineModels(input.models, {
     ...(cfg.ollamaHost ? { ollamaBaseUrl: cfg.ollamaHost } : {}),
+    ...(cfg.lmstudioHost ? { lmstudioBaseUrl: cfg.lmstudioHost } : {}),
     ...(cfg.geminiApiKey ? { geminiApiKey: cfg.geminiApiKey } : {}),
   });
 

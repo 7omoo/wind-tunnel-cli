@@ -30,6 +30,20 @@ export {
   SITUATIONS,
   type SituationMeta,
 } from "./data/situations";
+// LM Studio server probe & diagnosis
+export {
+  DEFAULT_LMSTUDIO_URL,
+  getLmStudioLoadedContext,
+  listLmStudioModels,
+} from "./lmstudio/client";
+export {
+  diagnoseLmStudio,
+  LMSTUDIO_MIN_CONTEXT,
+  type LmStudioDoctorReport,
+  type LmStudioRoleCheck,
+  loadCommand,
+  needsLargerContext,
+} from "./lmstudio/doctor";
 // Models
 export { DEFAULT_MODEL_ROLES, type ModelRole, type ModelRoles } from "./models/defaults";
 export { createPipelineModels, type PipelineModels } from "./models/pipeline";
@@ -41,7 +55,6 @@ export {
   resolveModel,
 } from "./models/registry";
 export { DEFAULT_KEEP_ALIVE, type PipelineStage, STAGE_NUM_CTX } from "./models/stages";
-
 // Ollama daemon probes & diagnosis
 export {
   DEFAULT_OLLAMA_URL,

@@ -17,6 +17,13 @@ describe("parseModelSpec", () => {
     expect(parseModelSpec("google:gemini-2.5-flash").provider).toBe("gemini");
   });
 
+  it("accepts lmstudio model ids, which contain a slash", () => {
+    expect(parseModelSpec("lmstudio:qwen/qwen3-4b-2507")).toEqual({
+      provider: "lmstudio",
+      name: "qwen/qwen3-4b-2507",
+    });
+  });
+
   it("rejects specs without a provider or name", () => {
     expect(() => parseModelSpec("qwen3")).toThrow(/expected "provider:model"/);
     expect(() => parseModelSpec("ollama:")).toThrow(/expected "provider:model"/);
@@ -31,6 +38,13 @@ describe("parseModelSpec", () => {
 describe("resolveModel", () => {
   it("constructs an Ollama model without network access", () => {
     const model = resolveModel("ollama:qwen3:0.6b", {}, { stage: "react" });
+    expect(model).toBeTruthy();
+  });
+
+  it("constructs an LM Studio model without network access", () => {
+    const model = resolveModel("lmstudio:qwen/qwen3-4b-2507", {
+      lmstudioBaseUrl: "http://mac:1234",
+    });
     expect(model).toBeTruthy();
   });
 
