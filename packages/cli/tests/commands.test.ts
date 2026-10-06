@@ -3,7 +3,7 @@
 // the built binary end to end but runs in a child process, invisible to
 // coverage; these exercise the command branches and error paths directly.
 
-import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -123,6 +123,28 @@ describe("commands (in process, against the Ollama stub)", () => {
     expect(res.code).toBe(0);
     expect(res.stdout).toContain("The offer feels manipulative"); // proposition table
     expect(res.stdout).toContain("nurse");
+  });
+
+  it("detail marks only real consensus, even in a run saved before the threshold", async () => {
+    // Runs written before isConsensus stored the top five by score, split
+    // propositions included. The marker must re-check what it reads.
+    const file = join(home, "wind-tunnel", "runs", runId, "cluster.json");
+    const saved = await readFile(file, "utf8");
+    const cluster = JSON.parse(saved);
+    cluster.consensus = [
+      { propositionId: "p1", text: "", score: 0.9, groupSupport: [0.95, 0.1] },
+      { propositionId: "p2", text: "", score: 0.5, groupSupport: [0.8, 0.65] },
+    ];
+    await writeFile(file, JSON.stringify(cluster));
+    try {
+      const res = await capture(() => detailCommand(runId, {}));
+      expect(res.code).toBe(0);
+      expect(res.stdout).toContain("  The offer feels manipulative"); // p1: split, unmarked
+      expect(res.stdout).not.toContain("≡ The offer feels manipulative");
+      expect(res.stdout).toContain("≡ The pricing is fair"); // p2: every group >= 0.6
+    } finally {
+      await writeFile(file, saved);
+    }
   });
 
   it("detail rejects a group number the run doesn't have", async () => {

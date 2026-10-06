@@ -55,8 +55,9 @@ wt-cli run "…" --profile hybrid
 ## `wt-cli detail [run-id]`
 
 The drill-down behind the summary: the proposition × group agreement table
-(consensus rows marked) and every voice in full — score, group, persona, the
-reaction, and the scorer's reasoning — sorted most-critical first. Defaults to
+(`≡` marks consensus: every group agrees at 0.6 or more, re-checked for older
+runs) and every voice in full — score, group, persona, the reaction, and the
+scorer's reasoning — sorted most-critical first. Defaults to
 the latest run; `--group <n>` narrows to one group. Pipes cleanly:
 `wt-cli detail | less`.
 
