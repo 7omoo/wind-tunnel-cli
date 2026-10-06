@@ -32,3 +32,9 @@ export function newRunId(now = new Date()): string {
   const rand = Array.from({ length: 4 }, () => alphabet[randomInt(alphabet.length)]).join("");
   return `${stamp}-${rand}`;
 }
+
+// Does a directory name have the newRunId shape? Lets callers skip anything
+// else that ends up in the runs root.
+export function isRunId(name: string): boolean {
+  return /^\d{8}-\d{6}-[a-z0-9]{4}$/.test(name);
+}

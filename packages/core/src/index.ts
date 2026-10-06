@@ -102,7 +102,7 @@ export {
 export { getSituationFraming, lengthClause } from "./prompts/situation";
 // Run store & executor
 export { type ExecuteDeps, executeRun } from "./run/execute";
-export { configRoot, dataRoot, newRunId, runsRoot } from "./run/paths";
+export { configRoot, dataRoot, isRunId, newRunId, runsRoot } from "./run/paths";
 export { RunStore } from "./run/store";
 export type {
   AnalyzeArtifact,
