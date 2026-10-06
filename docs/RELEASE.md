@@ -1,7 +1,7 @@
 # Release checklist
 
 Status: Draft
-Last updated: 2026-08-17
+Last updated: 2026-10-06
 
 The package is publish-ready (the `"private": true` safety catch was removed
 2026-08-17 as part of publish prep; the remaining gate is a human running the
@@ -12,8 +12,8 @@ steps below).
 1. ~~License.~~ **Resolved 2026-08-17: Apache-2.0.** `LICENSE` (canonical
    text), `NOTICE`, and `THIRD_PARTY_LICENSES.md` are in place; both package
    manifests carry the `license` field. The dependency audit found only
-   permissive licenses (bundled: Apache-2.0 ×7, MIT ×14, ISC ×1; runtime:
-   MIT ×5, BSD-3-Clause ×1 — zero copyleft). Regenerate the third-party file
+   permissive licenses (bundled: Apache-2.0 ×9, MIT ×14, ISC ×1; runtime:
+   MIT ×3, BSD-3-Clause ×1 — zero copyleft). Regenerate the third-party file
    after dependency changes: `node scripts/generate-third-party-notices.mjs`.
 2. ~~Tagline.~~ **Resolved 2026-08-17:** "Generate and cluster synthetic
    opinions from hundreds of local AI personas — a CLI for testing messages
@@ -36,7 +36,7 @@ While on 0.x:
 
 - **patch** (0.1.1) — bug fixes, doc/message tweaks
 - **minor** (0.2.0) — features, and any change to the public contract:
-  flags, summary output, run-artifact schemas (`schemaVersion`), config.toml
+  flags, summary output, run-artifact shapes (and `schemaVersion` where present), config.toml
 - **1.0.0** — a promise, not a milestone: the contract above freezes and
   breaking changes start costing a major. Not before real-world usage.
 
@@ -76,7 +76,7 @@ Notes:
   time (E403, moniker rule: too similar to the existing `windtunnel`) even
   though `npm view` showed it unclaimed — renamed 2026-08-17. `npx <package>`
   still runs `wt-cli`: with a single bin, npx executes it regardless of name.
-- `@wind-tunnel/core` stays private and unbublished: the CLI bundle compiles it
+- `@wind-tunnel/core` stays private and unpublished: the CLI bundle compiles it
   in (tsup `noExternal`), so it is a devDependency and never reaches the
   registry. Runtime deps of the published package are exactly:
   `@duckdb/node-api` (native, per-platform prebuilds), `commander`,

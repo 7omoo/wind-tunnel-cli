@@ -1,4 +1,4 @@
-// Model roles. Almost the entire pipeline rides on `bulk` (~112 calls at N=100);
+// Model roles. Almost the entire pipeline rides on `bulk` (~115 calls at N=100);
 // only a handful of calls need `analysis`/`premium`. That ratio is what makes
 // full-local viable — keep bulk small and fast.
 

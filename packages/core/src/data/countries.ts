@@ -1,7 +1,8 @@
 // Country metadata, single source. Maps each country code in countrySchema
 // (schemas.ts, the authority) to a display label and its region options.
-// To add a country: extend countrySchema, regions.ts, and this file together
-// (plus a dataset preset for `personas pull`).
+// To add a country: extend countrySchema and defaultPersonaLang (schemas.ts),
+// regions.ts, and this file together, plus a dataset preset in
+// personas/presets.ts for `personas pull`.
 
 import { type Country, countrySchema } from "../schemas";
 import {

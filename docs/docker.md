@@ -1,7 +1,7 @@
 # Docker
 
 Status: Implemented
-Last updated: 2026-08-17
+Last updated: 2026-10-06
 
 For Linux hosts with an NVIDIA GPU, `compose.yaml` bundles an Ollama service
 with GPU passthrough:
@@ -19,7 +19,8 @@ artifacts in `windtunnel-data`.
 **Apple Silicon:** containers cannot reach the GPU (Metal), so local Mac use
 should run both Ollama and the CLI natively — the npm package is the primary
 distribution for a reason. The image alone also suits CI/cloud runs pointed at
-a remote `OLLAMA_HOST`, or a `hybrid`/cloud model profile.
+a remote `OLLAMA_HOST`, or with every role set to a `gemini:` model (`hybrid`
+still needs Ollama for the bulk role).
 
 Building the image locally:
 

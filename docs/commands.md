@@ -1,7 +1,7 @@
 # Commands & configuration
 
 Status: Implemented
-Last updated: 2026-08-17
+Last updated: 2026-10-06
 
 The README covers the quickstart; this page is the full reference.
 
@@ -14,6 +14,8 @@ one or two real member voices — the minority's view of what the majority
 overlooks, and rewrite suggestions. When the crowd is effectively unanimous
 (no substantial clustering structure), it is honestly presented as one camp.
 
+The message must be 1–5000 characters.
+
 Audience selection:
 
 | Option | Default | Meaning |
@@ -23,23 +25,23 @@ Audience selection:
 | `--region <name>` | nationwide | restrict to one region, e.g. `--region CA`, `--region 関東地方` |
 | `--age-min / --age-max <n>` | none | age range filter |
 | `--sex <M\|F>` | none | sex filter (normalized codes work for every country) |
-| `--personas-file <path>` | — | use a custom JSON pool instead of the pulled one |
+| `--personas-file <path>` | — | use a custom JSON pool instead of the pulled one: an array of persona rows, or `{ "personas": [...], "version": "..." }`; rows without `country` are always included (fields: docs/DESIGN.md §7) |
 
 Framing:
 
 | Option | Default | Meaning |
 | --- | --- | --- |
 | `--situation <id>` | `sns_viral` | where the personas are "speaking": `anon_board` (anonymous board, hottest), `sns_viral`, `news_comment`, `public_comment`, `real_sns` (real-name, measured), `consumer_survey` (neutral baseline) |
-| `--context <text>` | none | background text shown to every persona alongside the message |
+| `--context <text>` | none | background text shown to every persona alongside the message (max 20 000 characters; longer text is cut) |
 | `--output-lang <ja\|en>` | follows country | language of the analysis output (reactions always come in the pool's language) |
 
 Execution:
 
 | Option | Default | Meaning |
 | --- | --- | --- |
-| `--batch <n>` | `5` | requests in flight for the batched stages (capped by the daemon's `OLLAMA_NUM_PARALLEL`, default 4) |
-| `--profile <local\|hybrid>` | `local` | `hybrid` sends the ~4 analysis calls to Gemini (needs `GEMINI_API_KEY`) |
-| `--model-bulk / --model-analysis / --model-premium <spec>` | qwen3 8B/14B | override a role model, e.g. `ollama:llama3.3`, `gemini:gemini-2.5-flash` |
+| `--batch <n>` | `5` | requests in flight for the batched stages, 1–64 (capped by the daemon's `OLLAMA_NUM_PARALLEL`, default 4) |
+| `--profile <local\|hybrid>` | `local` | `hybrid` sends the ~4 analysis calls to Gemini (needs `GEMINI_API_KEY`); its analysis/premium default is `gemini:gemini-3.1-pro-preview` |
+| `--model-bulk / --model-analysis / --model-premium <spec>` | qwen3 8B/14B | override a role model as `provider:model` — `ollama:`, `lmstudio:`, or `gemini:` (alias `google:`), e.g. `ollama:llama3.3`, `gemini:gemini-2.5-flash` |
 | `--host <url>` | `http://localhost:11434` | Ollama daemon address |
 
 Examples:
@@ -74,7 +76,9 @@ download.
 
 Continues an interrupted run from its checkpoint. Reactions already generated
 are never redone; completed stages are skipped. Also accepts a path to a run
-directory.
+directory. Models come from the run's own `input.json` (reproducibility); only
+connection settings — `--host`, the Ollama / LM Studio hosts, the Gemini key —
+come from the current config.
 
 ## `wt-cli doctor`
 
@@ -82,7 +86,9 @@ Checks daemon reachability, whether the role models are installed (with the
 exact `ollama pull` commands when not), what is loaded right now, and how to
 raise daemon parallelism. It resolves the host and role models exactly like
 `run` (flags, `WT_*` environment, `config.toml`), so it checks the setup a run
-would actually use.
+would actually use, and only for the providers the roles use: for `lmstudio:`
+roles it checks the server, the models, and their loaded context.
+`--host <url>` overrides the Ollama address.
 
 ## `wt-cli init`
 
@@ -99,6 +105,7 @@ environment variables < command-line flags.
 profile = "local"             # local | hybrid
 
 [model]
+# gemini_api_key = "..."      # for gemini: roles (or GEMINI_API_KEY)
 bulk = "ollama:qwen3:8b"      # reactions & classification (~100+ calls)
 analysis = "ollama:qwen3:14b" # verdict, propositions, group profiles (~3 calls)
 premium = "ollama:qwen3:14b"  # rewrite suggestions (1 call)
@@ -107,6 +114,7 @@ premium = "ollama:qwen3:14b"  # rewrite suggestions (1 call)
 country = "usa"
 personas = 100
 batch = 5
+situation = "sns_viral"
 output_lang = "en"            # defaults to the pool country's language (jp -> ja, others -> en)
 
 [ollama]
@@ -119,8 +127,8 @@ host = "http://localhost:1234"
 Environment variables: `WT_PROFILE`, `WT_MODEL_BULK`, `WT_MODEL_ANALYSIS`,
 `WT_MODEL_PREMIUM`, `WT_COUNTRY`, `WT_PERSONAS`, `WT_BATCH`, `WT_OUTPUT_LANG`,
 `WT_SITUATION`, `WT_OLLAMA_HOST` (or `OLLAMA_HOST`), `WT_LMSTUDIO_HOST`,
-`GEMINI_API_KEY`, `WT_DEBUG` (set to 1 for full stack traces and version info
-on errors).
+`GEMINI_API_KEY` (or `WT_GEMINI_API_KEY`), `WT_DEBUG` (set to 1 for full stack
+traces and version info on errors), `NO_COLOR` (plain output).
 
 ### Using LM Studio instead of Ollama
 
@@ -145,6 +153,11 @@ WT_MODEL_PREMIUM=lmstudio:qwen/qwen3-4b-2507 wt-cli run "draft copy..."
   so thinking models (Qwen3.5, …) are very slow on persona reactions. Their
   JSON stages still work through a workaround that is removed once the bug is
   fixed.
+- **Expect slower runs than Ollama.** LM Studio compiles a grammar for each new
+  JSON schema the first time it sees it (up to about a minute), and the first
+  JSON call after the reaction stage is retried once because LM Studio answers
+  it without the schema. A 16-persona run on `qwen/qwen3-4b-2507` took about
+  6 minutes on an M-series Mac.
 
 ## Run artifacts
 
@@ -161,5 +174,5 @@ the machine-readable output:
 | `analyze.json` | verdict: backlash index, triggers, safe version |
 | `cluster.json` | propositions, vote-matrix clusters, consensus/division, minority report |
 | `suggest.json` | rewrite alternatives + common ground |
-| `result.csv` | flat export for spreadsheets / R / SPSS (UTF-8 BOM, Excel-safe) |
-| `status.json` | stage marker, timestamps, warnings |
+| `result.csv` | flat export of the reactions for spreadsheets / R / SPSS (UTF-8 BOM so Excel reads non-ASCII; formula prefixes are not escaped — import untrusted files as text) |
+| `status.json` | stage marker, timestamps, warnings, last error |

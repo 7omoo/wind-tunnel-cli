@@ -3,8 +3,7 @@
 //
 // Note: OLLAMA_NUM_PARALLEL / OLLAMA_MAX_LOADED_MODELS are daemon-side settings
 // that the HTTP API does not expose, so effective parallelism cannot be read
-// here — the CLI states the defaults and how to change them, and the run stage
-// detects saturation empirically.
+// here — the CLI states the defaults and how to change them.
 
 import type { ModelRoles } from "../models/defaults";
 import { type ModelProvider, parseModelSpec } from "../models/registry";

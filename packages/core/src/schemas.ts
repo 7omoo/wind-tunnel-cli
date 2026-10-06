@@ -6,7 +6,7 @@ import { z } from "zod";
 //
 // LLM output is NOT described here: each pipeline stage owns the strict
 // generation schema it passes to Output.object (constrained decoding), since
-// most of them depend on the call (batch size, persona ids, cluster count).
+// most of them depend on the call (batch size, proposition and cluster counts).
 // The domain types those outputs are mapped into live in types.ts.
 // ──────────────────────────────────────────────────────────────────────
 

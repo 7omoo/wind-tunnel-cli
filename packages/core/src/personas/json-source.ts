@@ -1,5 +1,5 @@
 // In-memory PersonaSource over a JSON pool. Serves custom persona files and
-// test fixtures; country presets use the SQLite pool instead.
+// test fixtures; country presets use the DuckDB pool instead.
 
 import { readFile } from "node:fs/promises";
 import type { Country, RawPersona } from "../types";

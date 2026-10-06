@@ -33,7 +33,9 @@ const program = new Command();
 
 program
   .name("wt-cli")
-  .description("Simulate how hundreds of AI personas react to your message — locally")
+  .description(
+    "Generate and cluster synthetic opinions from hundreds of local AI personas — a CLI for testing messages before you publish",
+  )
   .version("0.1.0");
 
 program
@@ -105,7 +107,7 @@ program
 
 program
   .command("doctor")
-  .description("Check Ollama reachability, role models, and effective parallelism")
+  .description("Check that the configured model servers are reachable and the role models ready")
   .option("--host <url>", "Ollama base URL")
   .action(async (opts) => {
     process.exitCode = await runDoctor(opts);
