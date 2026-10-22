@@ -152,6 +152,24 @@ function sortedGroupLabels(labels: number[]): number[] {
   return [...new Set(labels)].sort((a, b) => a - b);
 }
 
+// The vote-matrix rows of each group, in sortedGroupLabels order.
+function rowsByGroup(voteMatrix: number[][], labels: number[]): number[][][] {
+  return sortedGroupLabels(labels).map((label) => voteMatrix.filter((_, i) => labels[i] === label));
+}
+
+// Share of a group's rows that agree (+1) with proposition j; 0 for an empty group.
+function agreeRate(rows: number[][], j: number): number {
+  const agree = rows.filter((row) => row[j] === 1).length;
+  return rows.length > 0 ? agree / rows.length : 0;
+}
+
+// agreeRate with Laplace smoothing, (1 + agree) / (2 + n): a tiny group can
+// neither veto nor carry a proposition on its own.
+function smoothedAgreeRate(rows: number[][], j: number): number {
+  const agree = rows.filter((row) => row[j] === 1).length;
+  return (1 + agree) / (2 + rows.length);
+}
+
 /**
  * Consensus ranking (product of Laplace-smoothed per-group agree rates).
  * Propositions all groups agree on score highest. Sorted by score, descending.
@@ -163,18 +181,11 @@ export function detectConsensus(
   labels: number[],
   propositions: OpinionClusterProposition[],
 ): OpinionClusterConsensus[] {
-  const uniqueLabels = sortedGroupLabels(labels);
-
+  const groups = rowsByGroup(voteMatrix, labels);
   return propositions
     .map((prop, j) => {
-      const groupSupport = uniqueLabels.map((label) => {
-        const members = voteMatrix.filter((_, i) => labels[i] === label);
-        const agree = members.filter((row) => row[j] === 1).length;
-        return (1 + agree) / (2 + members.length); // Laplace smoothing
-      });
-
+      const groupSupport = groups.map((rows) => smoothedAgreeRate(rows, j));
       const score = groupSupport.reduce((acc, p) => acc * p, 1);
-
       return { propositionId: prop.id, text: prop.text, score, groupSupport };
     })
     .sort((a, b) => b.score - a.score);
@@ -207,18 +218,11 @@ export function detectDivision(
   labels: number[],
   propositions: OpinionClusterProposition[],
 ): OpinionClusterDivisive[] {
-  const uniqueLabels = sortedGroupLabels(labels);
-
+  const groups = rowsByGroup(voteMatrix, labels);
   return propositions
     .map((prop, j) => {
-      const groupSupport = uniqueLabels.map((label) => {
-        const members = voteMatrix.filter((_, i) => labels[i] === label);
-        const agree = members.filter((row) => row[j] === 1).length;
-        return members.length > 0 ? agree / members.length : 0;
-      });
-
+      const groupSupport = groups.map((rows) => agreeRate(rows, j));
       const spread = Math.max(...groupSupport) - Math.min(...groupSupport);
-
       return { propositionId: prop.id, text: prop.text, spread, groupSupport };
     })
     .sort((a, b) => b.spread - a.spread);
@@ -233,15 +237,9 @@ export function computeBridging(
   labels: number[],
   propositions: OpinionClusterProposition[],
 ): OpinionClusterBridging[] {
-  const uniqueLabels = sortedGroupLabels(labels);
-
+  const groups = rowsByGroup(voteMatrix, labels);
   const results = propositions.map((prop, j) => {
-    const groupSupport = uniqueLabels.map((label) => {
-      const members = voteMatrix.filter((_, i) => labels[i] === label);
-      const agree = members.filter((row) => row[j] === 1).length;
-      return members.length > 0 ? agree / members.length : 0;
-    });
-
+    const groupSupport = groups.map((rows) => agreeRate(rows, j));
     const minGroupSupport = Math.min(...groupSupport);
     const meanGroupSupport = groupSupport.reduce((a, b) => a + b, 0) / groupSupport.length;
     const bridgingScore = minGroupSupport * meanGroupSupport;
