@@ -10,12 +10,10 @@ import type {
   OpinionClusterProposition,
 } from "../types";
 
-/**
- * Silhouette coefficient (for choosing k in k-means).
- * For each point: a = mean intra-cluster distance, b = mean distance to the
- * nearest other cluster; score = (b - a) / max(a, b), averaged over all points.
- * Points in singleton clusters score 0.
- */
+// Silhouette coefficient (for choosing k in k-means).
+// For each point: a = mean intra-cluster distance, b = mean distance to the
+// nearest other cluster; score = (b - a) / max(a, b), averaged over all points.
+// Points in singleton clusters score 0.
 export function silhouette(data: number[][], labels: number[]): number {
   const n = data.length;
   if (n <= 1) return 0;
@@ -99,14 +97,12 @@ const SILHOUETTE_MIN = 0.25;
 // otherwise re-running an identical run can change the number of camps.
 const KMEANS_SEED = 42;
 
-/**
- * Splits the vote matrix rows into opinion groups: k-means (on the votes, not
- * a projection) for k = 2..min(MAX_K, n/2), keeping the k with the best
- * silhouette. Honesty rule: k-means always returns k groups, even for a
- * unanimous corpus — which then reads as two camps with near-identical beliefs
- * (observed in production) — so a best silhouette below SILHOUETTE_MIN
- * collapses to a single group.
- */
+// Splits the vote matrix rows into opinion groups: k-means (on the votes, not
+// a projection) for k = 2..min(MAX_K, n/2), keeping the k with the best
+// silhouette. Honesty rule: k-means always returns k groups, even for a
+// unanimous corpus — which then reads as two camps with near-identical beliefs
+// (observed in production) — so a best silhouette below SILHOUETTE_MIN
+// collapses to a single group.
 export function partitionVotes(voteMatrix: number[][]): { k: number; labels: number[] } {
   let best = { k: 1, labels: voteMatrix.map(() => 0), score: -1 };
   const maxK = Math.min(MAX_K, Math.floor(voteMatrix.length / 2));
@@ -122,11 +118,9 @@ export function partitionVotes(voteMatrix: number[][]): { k: number; labels: num
   return { k: best.k, labels: best.labels };
 }
 
-/**
- * Groups rows by label into clusters with their mean vote (centroid) and
- * member ids. Labels with no members — k-means can leave a centroid on votes
- * another one already covers — are dropped rather than shown as "group N (0)".
- */
+// Groups rows by label into clusters with their mean vote (centroid) and
+// member ids. Labels with no members — k-means can leave a centroid on votes
+// another one already covers — are dropped rather than shown as "group N (0)".
 export function buildClusters(
   labels: number[],
   k: number,
@@ -169,12 +163,10 @@ function smoothedAgreeRate(rows: number[][], j: number): number {
   return (1 + agree) / (2 + rows.length);
 }
 
-/**
- * Consensus ranking (product of Laplace-smoothed per-group agree rates).
- * Propositions all groups agree on score highest. Sorted by score, descending.
- * A ranking, not a verdict: filter with isConsensus before calling a row
- * consensus.
- */
+// Consensus ranking (product of Laplace-smoothed per-group agree rates).
+// Propositions all groups agree on score highest. Sorted by score, descending.
+// A ranking, not a verdict: filter with isConsensus before calling a row
+// consensus.
 export function detectConsensus(
   voteMatrix: number[][],
   labels: number[],
@@ -193,23 +185,19 @@ export function detectConsensus(
 // Minimum per-group support for a proposition to count as consensus.
 const CONSENSUS_MIN_SUPPORT = 0.6;
 
-/**
- * Whether a detectConsensus row is actually consensus: every group's support
- * is at least CONSENSUS_MIN_SUPPORT (with a single group, that group alone).
- * detectConsensus only ranks — by the product of the supports, with no
- * threshold — so a proposition the groups split on (support 0.97 / 0.09 / 0.96
- * / 0.40 / 0.10) could still top the list and be reported as consensus.
- * Callers reading saved runs filter with it too: runs written before this
- * check still carry unfiltered rows.
- */
+// Whether a detectConsensus row is actually consensus: every group's support
+// is at least CONSENSUS_MIN_SUPPORT (with a single group, that group alone).
+// detectConsensus only ranks — by the product of the supports, with no
+// threshold — so a proposition the groups split on (support 0.97 / 0.09 / 0.96
+// / 0.40 / 0.10) could still top the list and be reported as consensus.
+// Callers reading saved runs filter with it too: runs written before this
+// check still carry unfiltered rows.
 export function isConsensus(c: Pick<OpinionClusterConsensus, "groupSupport">): boolean {
   return c.groupSupport.length > 0 && c.groupSupport.every((p) => p >= CONSENSUS_MIN_SUPPORT);
 }
 
-/**
- * Division detection (max - min spread of per-group agree rates). Sorted by
- * spread, descending.
- */
+// Division detection (max - min spread of per-group agree rates). Sorted by
+// spread, descending.
 export function detectDivision(
   voteMatrix: number[][],
   labels: number[],
@@ -225,10 +213,8 @@ export function detectDivision(
     .sort((a, b) => b.spread - a.spread);
 }
 
-/**
- * Bridging propositions (support above BRIDGING_MIN_SUPPORT in every group).
- * bridgingScore = minGroupSupport * meanGroupSupport, descending, top TOP_PROPOSITIONS.
- */
+// Bridging propositions (support above BRIDGING_MIN_SUPPORT in every group).
+// bridgingScore = minGroupSupport * meanGroupSupport, descending, top TOP_PROPOSITIONS.
 export function computeBridging(
   voteMatrix: number[][],
   labels: number[],
@@ -256,15 +242,13 @@ export function computeBridging(
     .slice(0, TOP_PROPOSITIONS);
 }
 
-/**
- * The n propositions with the largest |loading| on each of the first k
- * principal components — the material the axis-label stage names each axis
- * from (labelAxes).
- *
- * `loadings` is ml-pca's getLoadings(), which is Uᵀ: rows are principal
- * components, columns are propositions, so loadings[c][j] is the weight of
- * proposition j on component c.
- */
+// The n propositions with the largest |loading| on each of the first k
+// principal components — the material the axis-label stage names each axis
+// from (labelAxes).
+//
+// `loadings` is ml-pca's getLoadings(), which is Uᵀ: rows are principal
+// components, columns are propositions, so loadings[c][j] is the weight of
+// proposition j on component c.
 export function topPropositionsByAxis(
   propositions: { text: string }[],
   loadings: number[][],
@@ -286,12 +270,10 @@ export type MinorityDivergence = {
   overallStance: number; // size-weighted mean of all cluster centroids
 };
 
-/**
- * The minority report's numbers: the smallest cluster (first one on ties) and
- * the `top` propositions where its centroid is farthest from the size-weighted
- * overall centroid. null with fewer than two clusters. Computed here so the
- * model only interprets these numbers, never derives them.
- */
+// The minority report's numbers: the smallest cluster (first one on ties) and
+// the `top` propositions where its centroid is farthest from the size-weighted
+// overall centroid. null with fewer than two clusters. Computed here so the
+// model only interprets these numbers, never derives them.
 export function findMinorityDivergence(
   clusters: OpinionCluster[],
   propositions: OpinionClusterProposition[],
