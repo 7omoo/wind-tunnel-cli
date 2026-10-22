@@ -2,6 +2,17 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_MODEL_ROLES } from "../src/models/defaults";
 import { parseModelSpec, resolveModel } from "../src/models/registry";
 import { STAGE_NUM_CTX } from "../src/models/stages";
+import { CuratedError } from "../src/util/curated-error";
+
+// Captures the error a call throws, so its class and message can both be checked.
+function failure(fn: () => unknown): Error {
+  try {
+    fn();
+  } catch (e) {
+    return e as Error;
+  }
+  throw new Error("expected the call to throw");
+}
 
 describe("parseModelSpec", () => {
   it("splits on the first colon only (Ollama names contain colons)", () => {
@@ -24,14 +35,22 @@ describe("parseModelSpec", () => {
     });
   });
 
+  // Both rejections are the user's to fix, so both are curated: the CLI prints
+  // them as written instead of adding the "report an issue" hint.
   it("rejects specs without a provider or name", () => {
-    expect(() => parseModelSpec("qwen3")).toThrow(/expected "provider:model"/);
-    expect(() => parseModelSpec("ollama:")).toThrow(/expected "provider:model"/);
-    expect(() => parseModelSpec("")).toThrow(/expected "provider:model"/);
+    for (const spec of ["qwen3", "ollama:", ""]) {
+      const e = failure(() => parseModelSpec(spec));
+      expect(e).toBeInstanceOf(CuratedError);
+      expect(e.message).toMatch(/expected "provider:model"/);
+    }
   });
 
   it("rejects unknown providers loudly (no silent fallback)", () => {
-    expect(() => parseModelSpec("openai:gpt-4o")).toThrow(/Unknown model provider/);
+    const e = failure(() => parseModelSpec("openai:gpt-4o"));
+    expect(e).toBeInstanceOf(CuratedError);
+    expect(e.message).toBe(
+      'unknown model provider "openai" in "openai:gpt-4o" — one of: ollama, lmstudio, gemini',
+    );
   });
 });
 
@@ -49,7 +68,9 @@ describe("resolveModel", () => {
   });
 
   it("requires an API key for gemini specs", () => {
-    expect(() => resolveModel("gemini:gemini-2.5-flash")).toThrow(/Gemini API key/);
+    const e = failure(() => resolveModel("gemini:gemini-2.5-flash"));
+    expect(e).toBeInstanceOf(CuratedError);
+    expect(e.message).toMatch(/Gemini API key — set GEMINI_API_KEY/);
     expect(resolveModel("gemini:gemini-2.5-flash", { geminiApiKey: "test-key" })).toBeTruthy();
   });
 });

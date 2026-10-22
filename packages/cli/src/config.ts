@@ -1,10 +1,12 @@
 // Configuration resolution: defaults < config.toml < WT_* environment < flags
 // (docs/DESIGN.md §9). resolveConfig is pure for testability; loadConfig adds
-// the file read.
+// the file read. Every rejection is a CuratedError: it names the setting, the
+// value and the fix, and the CLI prints it as written.
 
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
+  CuratedError,
   configRoot,
   countrySchema,
   DEFAULT_MODEL_ROLES,
@@ -20,8 +22,10 @@ import { z } from "zod";
 // `wt-cli init` writes explicit values into config.toml so users pin their own.
 const HYBRID_ANALYSIS_MODEL = "gemini:gemini-3.1-pro-preview";
 
+const profileSchema = z.enum(["local", "hybrid"]);
+
 const fileSchema = z.object({
-  profile: z.enum(["local", "hybrid"]).optional(),
+  profile: profileSchema.optional(),
   model: z
     .object({
       bulk: z.string().optional(),
@@ -82,12 +86,22 @@ function withScheme(host: string | undefined): string | undefined {
 function intFrom(value: string | number | undefined, label: string): number | undefined {
   if (value === undefined) return undefined;
   const n = typeof value === "number" ? value : Number.parseInt(value, 10);
-  if (!Number.isInteger(n) || n < 1) throw new Error(`${label} must be a positive integer`);
+  if (!Number.isInteger(n) || n < 1) throw new CuratedError(`${label} must be a positive integer`);
   return n;
+}
+
+// A setting restricted to an enum. The rejection lists every valid option
+// instead of surfacing zod's issue array as the message.
+function enumSetting<S extends z.ZodEnum>(schema: S, raw: unknown, label: string): z.infer<S> {
+  const parsed = schema.safeParse(raw);
+  if (parsed.success) return parsed.data;
+  throw new CuratedError(`unknown ${label} "${raw}" — one of: ${schema.options.join(", ")}`);
 }
 
 export function resolveConfig(opts: {
   fileText?: string;
+  // Where fileText came from; named in its error messages.
+  configPath?: string;
   env?: Record<string, string | undefined>;
   flags?: CliFlags;
 }): ResolvedConfig {
@@ -99,16 +113,17 @@ export function resolveConfig(opts: {
     const parsed = fileSchema.safeParse(parseToml(opts.fileText));
     if (!parsed.success) {
       const issue = parsed.error.issues[0];
-      throw new Error(
-        `invalid config.toml: ${issue ? `${issue.path.join(".")}: ${issue.message}` : "parse error"}`,
-      );
+      const detail = issue ? `${issue.path.join(".")}: ${issue.message}` : "parse error";
+      throw new CuratedError(`invalid ${opts.configPath ?? "config.toml"}: ${detail}`);
     }
     file = parsed.data;
   }
 
-  const profile = z
-    .enum(["local", "hybrid"])
-    .parse(flags.profile ?? env.WT_PROFILE ?? file.profile ?? "local");
+  const profile = enumSetting(
+    profileSchema,
+    flags.profile ?? env.WT_PROFILE ?? file.profile ?? "local",
+    "profile",
+  );
 
   // Model roles: profile picks the defaults, explicit settings win per role.
   const profileDefaults: ModelRoles =
@@ -130,8 +145,10 @@ export function resolveConfig(opts: {
       flags.modelPremium ?? env.WT_MODEL_PREMIUM ?? file.model?.premium ?? profileDefaults.premium,
   };
 
-  const country = countrySchema.parse(
+  const country = enumSetting(
+    countrySchema,
     flags.country ?? env.WT_COUNTRY ?? file.run?.country ?? "usa",
+    "country",
   );
   // Analysis language follows the pool's country unless set explicitly, so the
   // default experience is monolingual end to end (usa -> en, jp -> ja, ...).
@@ -141,15 +158,19 @@ export function resolveConfig(opts: {
     intFrom(env.WT_PERSONAS, "WT_PERSONAS") ??
     file.run?.personas ??
     100;
-  if (personas > 1000) throw new Error("--personas must be 1000 or fewer");
+  if (personas > 1000) throw new CuratedError("--personas must be 1000 or fewer");
   const batch =
     intFrom(flags.batch, "--batch") ?? intFrom(env.WT_BATCH, "WT_BATCH") ?? file.run?.batch ?? 5;
-  if (batch > 64) throw new Error("--batch must be 64 or fewer");
-  const outputLang = outputLangSchema.parse(
+  if (batch > 64) throw new CuratedError("--batch must be 64 or fewer");
+  const outputLang = enumSetting(
+    outputLangSchema,
     flags.outputLang ?? env.WT_OUTPUT_LANG ?? file.run?.output_lang ?? derivedOutputLang,
+    "output language",
   );
-  const situation = situationSchema.parse(
+  const situation = enumSetting(
+    situationSchema,
     flags.situation ?? env.WT_SITUATION ?? file.run?.situation ?? DEFAULT_SITUATION,
+    "situation",
   );
 
   // Ollama host: flag > WT_OLLAMA_HOST > OLLAMA_HOST (ollama CLI convention) > file.
@@ -176,11 +197,12 @@ export function configFilePath(): string {
 }
 
 export async function loadConfig(flags?: CliFlags): Promise<ResolvedConfig> {
+  const configPath = configFilePath();
   let fileText: string | undefined;
   try {
-    fileText = await readFile(configFilePath(), "utf8");
+    fileText = await readFile(configPath, "utf8");
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
   }
-  return resolveConfig({ fileText, env: process.env, flags });
+  return resolveConfig({ fileText, configPath, env: process.env, flags });
 }

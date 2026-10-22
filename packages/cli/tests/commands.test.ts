@@ -151,12 +151,35 @@ describe("commands (in process, against the Ollama stub)", () => {
     const res = await capture(() => detailCommand(runId, { group: 99 }));
     expect(res.code).toBe(1);
     expect(res.stderr).toMatch(/--group must be 1\.\.\d/);
+    expect(res.stderr).not.toContain("WT_DEBUG");
   });
 
   it("resume reports an unknown run id", async () => {
     const res = await capture(() => resumeCommand("no-such-run", { host: stub.url }));
     expect(res.code).toBe(1);
     expect(res.stderr).toContain("run not found");
+    expect(res.stderr).not.toContain("WT_DEBUG");
+  });
+
+  // Input mistakes are explained in one line; zod's issue list and the
+  // "report an issue" hint are for failures the user cannot fix.
+  it("rejects an empty message with the length rule", async () => {
+    const res = await capture(() =>
+      runCommand("", { personasFile: poolFile, host: stub.url, ...MODELS }),
+    );
+    expect(res.code).toBe(1);
+    expect(res.stderr).toContain("1 to 5000 characters");
+    expect(res.stderr).not.toContain('"code"');
+    expect(res.stderr).not.toContain("WT_DEBUG");
+  });
+
+  it("rejects an unknown country with the valid codes", async () => {
+    const res = await capture(() =>
+      runCommand("x", { personasFile: poolFile, country: "zz", host: stub.url, ...MODELS }),
+    );
+    expect(res.code).toBe(1);
+    expect(res.stderr).toContain('unknown country "zz" — one of: jp, usa');
+    expect(res.stderr).not.toContain("WT_DEBUG");
   });
 
   it("run stops before any work when the daemon is unreachable", async () => {

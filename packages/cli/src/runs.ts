@@ -14,7 +14,7 @@ export async function resolveRunDir(idOrPath: string): Promise<string> {
       // keep trying
     }
   }
-  throw new Error(`run not found: ${idOrPath} (looked in ${runsRoot()})`);
+  throw new CuratedError(`run not found: ${idOrPath} (looked in ${runsRoot()})`);
 }
 
 // Latest run under the runs root. Run ids start with a timestamp, so the

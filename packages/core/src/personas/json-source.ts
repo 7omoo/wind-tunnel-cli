@@ -3,6 +3,7 @@
 
 import { readFile } from "node:fs/promises";
 import type { Country, RawPersona } from "../types";
+import { CuratedError } from "../util/curated-error";
 import { shuffle } from "../util/shuffle";
 import type { PersonaFilter, PersonaSource } from "./source";
 
@@ -28,7 +29,11 @@ export async function loadJsonPersonaSource(filePath: string): Promise<PersonaSo
     | RawPersona[]
     | { personas?: RawPersona[]; version?: string };
   const personas = Array.isArray(raw) ? raw : (raw.personas ?? []);
-  if (personas.length === 0) throw new Error(`no personas found in ${filePath}`);
+  if (personas.length === 0) {
+    throw new CuratedError(
+      `no personas found in ${filePath} — expected an array of persona rows or { "personas": [...] }`,
+    );
+  }
   const version = Array.isArray(raw) ? undefined : raw.version;
   return createJsonPersonaSource({ personas, version });
 }

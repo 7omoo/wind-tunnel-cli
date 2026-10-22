@@ -28,12 +28,42 @@ function render(e: unknown, opts?: { resumeId?: string; providers?: ModelProvide
 }
 
 describe("classifyError", () => {
-  it("recognizes a dead Ollama daemon through the cause chain", () => {
+  it("recognizes a dead model server through the cause chain", () => {
     const c = classifyError(
       new Error("all 8 persona reactions failed", { cause: connError("ECONNREFUSED") }),
     );
-    expect(c.kind).toBe("ollama");
-    expect(c.hints.join(" ")).toContain("restart");
+    expect(c.kind).toBe("connection");
+    expect(c.headline).toBe("Ollama stopped responding"); // the default provider
+    expect(c.hints.join(" ")).toContain("ollama serve");
+  });
+
+  // Like the timeout remedies: the server named is the one the run uses.
+  describe("connection remedies follow the run's providers", () => {
+    const text = (providers: ModelProvider[]) => {
+      const c = classifyError(connError("ECONNREFUSED"), { providers });
+      return [c.headline, ...c.hints].join("\n");
+    };
+
+    it("names LM Studio and its start command for LM Studio runs", () => {
+      const out = text(["lmstudio"]);
+      expect(out).toContain("LM Studio stopped responding");
+      expect(out).toContain("lms server start");
+      expect(out).toContain("https://lmstudio.ai");
+      expect(out).not.toMatch(/ollama/i);
+    });
+
+    it("covers both servers when a run mixes them", () => {
+      const out = text(["ollama", "lmstudio"]);
+      expect(out).toContain("Ollama or LM Studio stopped responding");
+      expect(out).toContain("ollama serve");
+      expect(out).toContain("lms server start");
+    });
+
+    it("blames the network, not a local server, for a Gemini-only run", () => {
+      const out = text(["gemini"]);
+      expect(out).toContain("could not reach");
+      expect(out).not.toMatch(/ollama|LM Studio/i);
+    });
   });
 
   it("recognizes timeouts from AbortSignal.timeout", () => {

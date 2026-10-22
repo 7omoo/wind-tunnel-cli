@@ -2,7 +2,19 @@
 // ingest-hf.test.ts (opt-in, network-heavy).
 
 import { describe, expect, it } from "vitest";
-import { expectedRegionsFull } from "../src/personas/ingest";
+import { expectedRegionsFull, pullCountryPool } from "../src/personas/ingest";
+import { CuratedError } from "../src/util/curated-error";
+
+describe("pullCountryPool", () => {
+  // Rejected before the pool file or the network is touched.
+  it.each([0, 100_001])("refuses cap %s with the valid range", async (cap) => {
+    const e = await pullCountryPool({ country: "jp", poolPath: "/nonexistent/pool.duckdb", cap })
+      .then(() => null)
+      .catch((x: unknown) => x);
+    expect(e).toBeInstanceOf(CuratedError);
+    expect((e as Error).message).toBe(`invalid cap ${cap} — must be an integer from 1 to 100000`);
+  });
+});
 
 describe("expectedRegionsFull (early-stop rule)", () => {
   const expected = ["A", "B"];

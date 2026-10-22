@@ -13,7 +13,7 @@ import { paint, useColor } from "./render/format";
 const ISSUES_URL = "https://github.com/7omoo/wind-tunnel-cli/issues";
 
 export type ErrorKind =
-  | "ollama"
+  | "connection"
   | "network"
   | "timeout"
   | "disk"
@@ -31,33 +31,69 @@ export type ClassifiedError = {
 // unknown (errors outside a run) the default provider, Ollama, is assumed.
 export type ErrorContext = { providers?: readonly ModelProvider[] };
 
-// How to unstick each local model server after a timeout. Gemini has no
-// server to restart; the resume hint is all there is.
-const STUCK_SERVER_HINTS = {
+// The local model servers a run can depend on, and how to bring each back:
+// `start` after a refused connection, `inspect` + `restart` after a timeout
+// (usually a wedged model load). Gemini has no server to manage; for it the
+// resume hint is all there is.
+type LocalServer = {
+  name: string;
+  start: string;
+  restart: string;
+  install: string;
+  inspect: readonly string[];
+};
+
+const LOCAL_SERVERS: Record<"ollama" | "lmstudio", LocalServer> = {
   ollama: {
     name: "Ollama",
-    hints: ["restart the daemon: brew services restart ollama (or restart the Ollama app)"],
+    start: "brew services start ollama (or: ollama serve)",
+    restart: "brew services restart ollama (or restart the Ollama app)",
+    install: "https://ollama.com/download",
+    inspect: [],
   },
   lmstudio: {
     name: "LM Studio",
-    hints: [
-      "check what's loaded: lms ps",
-      "restart the server: lms server stop && lms server start (or restart the LM Studio app)",
-    ],
+    start: "lms server start (or the Developer tab in the app)",
+    restart: "lms server stop && lms server start (or restart the LM Studio app)",
+    install: "https://lmstudio.ai",
+    inspect: ["check what's loaded: lms ps"],
   },
-} as const;
+};
+
+function localServers(providers: readonly ModelProvider[]): LocalServer[] {
+  return (["ollama", "lmstudio"] as const)
+    .filter((p) => providers.includes(p))
+    .map((p) => LOCAL_SERVERS[p]);
+}
+
+function connectionError(providers: readonly ModelProvider[]): ClassifiedError {
+  const servers = localServers(providers);
+  if (servers.length === 0) {
+    return {
+      kind: "connection",
+      headline: "could not reach the model server",
+      hints: ["check your network connection and retry"],
+    };
+  }
+  return {
+    kind: "connection",
+    headline: `${servers.map((s) => s.name).join(" or ")} stopped responding`,
+    hints: servers.flatMap((s) => [`start it again: ${s.start}`, `not installed? ${s.install}`]),
+  };
+}
 
 function timeoutError(providers: readonly ModelProvider[]): ClassifiedError {
-  const servers = (["ollama", "lmstudio"] as const)
-    .filter((p) => providers.includes(p))
-    .map((p) => STUCK_SERVER_HINTS[p]);
+  const servers = localServers(providers);
   if (servers.length === 0) {
     return { kind: "timeout", headline: "an LLM call timed out", hints: [] };
   }
   return {
     kind: "timeout",
     headline: `an LLM call timed out — ${servers.map((s) => s.name).join(" or ")} looks stuck (often a wedged model load)`,
-    hints: ["check what's loaded: wt-cli doctor", ...servers.flatMap((s) => s.hints)],
+    hints: [
+      "check what's loaded: wt-cli doctor",
+      ...servers.flatMap((s) => [...s.inspect, `restart the server: ${s.restart}`]),
+    ],
   };
 }
 
@@ -111,14 +147,7 @@ export function classifyError(e: unknown, context: ErrorContext = {}): Classifie
       text,
     )
   ) {
-    return {
-      kind: "ollama",
-      headline: "Ollama stopped responding",
-      hints: [
-        "restart it: brew services restart ollama (or: ollama serve)",
-        "not installed? https://ollama.com/download",
-      ],
-    };
+    return connectionError(context.providers ?? ["ollama"]);
   }
 
   if (/ENOSPC/.test(text)) {
