@@ -172,6 +172,16 @@ describe.skipIf(!existsSync(DIST))("wt-cli built binary against a stub daemon", 
     expect(res.stdout.trim()).toBe(manifest.version);
   });
 
+  // The option lists come from the enums, so adding a country or situation
+  // updates the help text by itself.
+  it("lists every country and situation in --help", async () => {
+    const res = await cli(["run", "--help"]);
+    expect(res.code).toBe(0);
+    const text = res.stdout.replace(/\s+/g, " "); // commander wraps at 80 columns
+    expect(text).toContain("jp, usa, in, br, fr, kr, vn, be");
+    expect(text).toContain("consumer_survey (Consumer survey)");
+  });
+
   it("fails fast with a clear message when the daemon is unreachable", {
     timeout: 60_000,
   }, async () => {

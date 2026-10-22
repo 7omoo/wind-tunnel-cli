@@ -1,3 +1,4 @@
+import { COUNTRY_CODES, outputLangSchema, SITUATIONS } from "@wind-tunnel/core";
 import { Command } from "commander";
 import { version } from "../package.json";
 import { detailCommand } from "./commands/detail";
@@ -6,8 +7,15 @@ import { initCommand } from "./commands/init";
 import { personasListCommand, personasPullCommand } from "./commands/personas";
 import { resumeCommand } from "./commands/resume";
 import { runCommand } from "./commands/run";
+import { PROFILE_OPTIONS } from "./config";
 import { renderError } from "./errors";
 import { integerOption } from "./options";
+
+// Option lists in the help text follow the enums, so they cannot go stale.
+const COUNTRIES = COUNTRY_CODES.join(", ");
+const SITUATION_LIST = Object.values(SITUATIONS)
+  .map((s) => `${s.id} (${s.label})`)
+  .join(", ");
 
 // Pipe etiquette: `wt-cli detail | head` closes stdout early — exit quietly
 // instead of dumping an EPIPE stack (and never let a broken pipe kill a run
@@ -43,18 +51,24 @@ program
   .command("run")
   .description("Run the full pipeline: sample personas, react, analyze, cluster, suggest")
   .argument("<message>", "the draft message to test")
-  .option("--country <code>", "persona pool country (jp, usa, in, br, fr, kr, vn, be)")
+  .option("--country <code>", `persona pool country (${COUNTRIES})`)
   .option("--personas <n>", "number of personas", integerOption)
   .option("--batch <n>", "requests in flight for batched stages", integerOption)
-  .option("--situation <id>", "channel context (anon_board, sns_viral, news_comment, ...)")
-  .option("--output-lang <lang>", "analysis output language (ja, en)")
+  .option("--situation <id>", `where the personas speak: ${SITUATION_LIST}`)
+  .option(
+    "--output-lang <lang>",
+    `analysis output language (${outputLangSchema.options.join(", ")})`,
+  )
   .option("--context <text>", "shared background text given to every persona")
   .option("--personas-file <path>", "JSON persona pool to sample from")
-  .option("--region <name>", "restrict to a region of the pool")
+  .option(
+    "--region <name>",
+    "restrict to one region of the pool (value or label, e.g. CA or California)",
+  )
   .option("--age-min <n>", "minimum persona age", integerOption)
   .option("--age-max <n>", "maximum persona age", integerOption)
   .option("--sex <value>", "restrict persona sex (M / F, matched against the pool)")
-  .option("--profile <name>", "model profile (local, hybrid)")
+  .option("--profile <name>", `model profile (${PROFILE_OPTIONS.join(", ")})`)
   .option("--model-bulk <spec>", "bulk model (provider:model)")
   .option("--model-analysis <spec>", "analysis model (provider:model)")
   .option("--model-premium <spec>", "premium model (provider:model)")
@@ -86,7 +100,7 @@ const personas = program.command("personas").description("Manage the local perso
 personas
   .command("pull")
   .description("Fetch a country preset from Hugging Face into the local pool")
-  .argument("<code>", "country code (jp, usa, in, br, fr, kr, vn, be)")
+  .argument("<code>", `country code (${COUNTRIES})`)
   .option("--cap <n>", "per-region sampling cap (default: preset-specific)", integerOption)
   .action(async (code, opts) => {
     process.exitCode = await personasPullCommand(code, opts);

@@ -24,6 +24,7 @@ import { z } from "zod";
 const HYBRID_ANALYSIS_MODEL = "gemini:gemini-3.1-pro-preview";
 
 const profileSchema = z.enum(["local", "hybrid"]);
+export const PROFILE_OPTIONS = profileSchema.options;
 
 const fileSchema = z.object({
   profile: profileSchema.optional(),
