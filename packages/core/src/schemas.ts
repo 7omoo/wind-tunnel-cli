@@ -37,12 +37,6 @@ export type Situation = z.infer<typeof situationSchema>;
 export const outputLangSchema = z.enum(["ja", "en"]);
 export type OutputLang = z.infer<typeof outputLangSchema>;
 
-// Normalize a raw config/flag value to an output language. Anything but "en"
-// (invalid, missing) falls back to "ja".
-export function normalizeOutputLang(raw: unknown): OutputLang {
-  return raw === "en" ? "en" : "ja";
-}
-
 // English language name for analysis prompts ("Output in {X}").
 const OUTPUT_LANG_NAME: Record<OutputLang, string> = {
   ja: "Japanese",
@@ -74,6 +68,15 @@ export function defaultPersonaLang(country: Country): PersonaLang {
     be: "en",
   };
   return map[country] ?? "en";
+}
+
+// country -> default analysis output language: the pool's own language when
+// the analysis can be written in it (jp -> ja), English otherwise. Applied
+// when no output language is configured, so a default run reads in one
+// language end to end.
+export function defaultOutputLang(country: Country): OutputLang {
+  const parsed = outputLangSchema.safeParse(defaultPersonaLang(country));
+  return parsed.success ? parsed.data : "en";
 }
 
 // === Input limits ===

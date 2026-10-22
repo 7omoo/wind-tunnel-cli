@@ -11,6 +11,7 @@ import {
   countrySchema,
   DEFAULT_MODEL_ROLES,
   DEFAULT_SITUATION,
+  defaultOutputLang,
   type ModelRoles,
   outputLangSchema,
   situationSchema,
@@ -92,7 +93,11 @@ function intFrom(value: string | number | undefined, label: string): number | un
 
 // A setting restricted to an enum. The rejection lists every valid option
 // instead of surfacing zod's issue array as the message.
-function enumSetting<S extends z.ZodEnum>(schema: S, raw: unknown, label: string): z.infer<S> {
+export function enumSetting<S extends z.ZodEnum>(
+  schema: S,
+  raw: unknown,
+  label: string,
+): z.infer<S> {
   const parsed = schema.safeParse(raw);
   if (parsed.success) return parsed.data;
   throw new CuratedError(`unknown ${label} "${raw}" — one of: ${schema.options.join(", ")}`);
@@ -150,9 +155,6 @@ export function resolveConfig(opts: {
     flags.country ?? env.WT_COUNTRY ?? file.run?.country ?? "usa",
     "country",
   );
-  // Analysis language follows the pool's country unless set explicitly, so the
-  // default experience is monolingual end to end (usa -> en, jp -> ja, ...).
-  const derivedOutputLang = country === "jp" ? "ja" : "en";
   const personas =
     intFrom(flags.personas, "--personas") ??
     intFrom(env.WT_PERSONAS, "WT_PERSONAS") ??
@@ -164,7 +166,7 @@ export function resolveConfig(opts: {
   if (batch > 64) throw new CuratedError("--batch must be 64 or fewer");
   const outputLang = enumSetting(
     outputLangSchema,
-    flags.outputLang ?? env.WT_OUTPUT_LANG ?? file.run?.output_lang ?? derivedOutputLang,
+    flags.outputLang ?? env.WT_OUTPUT_LANG ?? file.run?.output_lang ?? defaultOutputLang(country),
     "output language",
   );
   const situation = enumSetting(

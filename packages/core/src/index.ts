@@ -113,8 +113,8 @@ export type {
 export {
   CONTEXT_MAX_CHARS,
   countrySchema,
+  defaultOutputLang,
   defaultPersonaLang,
-  normalizeOutputLang,
   outputLangName,
   outputLangSchema,
   personaLangSchema,
