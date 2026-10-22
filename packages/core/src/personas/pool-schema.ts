@@ -4,7 +4,7 @@
 import type { DuckDBConnection } from "@duckdb/node-api";
 import type { RawPersona } from "../types";
 
-export const POOL_DDL = [
+const POOL_DDL = [
   `CREATE TABLE IF NOT EXISTS persona (
     uuid TEXT NOT NULL,
     country TEXT NOT NULL,
@@ -33,9 +33,10 @@ export async function ensurePoolSchema(connection: DuckDBConnection): Promise<vo
   }
 }
 
-// Column list in table order — reused by ingest INSERTs and pool SELECTs so
-// the two can never disagree on ordering. `satisfies` keeps every column a
-// RawPersona field; a test keeps it equal to the DDL above.
+// Column list in table order: the ingest INSERT selects them in this order
+// into the staging table, and the pool SELECT names them so rows are read by
+// column name. `satisfies` keeps every column a RawPersona field; a test
+// keeps it equal to the DDL above.
 export const PERSONA_COLUMNS = [
   "uuid",
   "country",

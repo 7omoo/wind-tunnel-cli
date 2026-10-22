@@ -30,6 +30,9 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      - name: Unused exports & dependencies
+        run: pnpm knip
+
       # Build first: the black-box E2E suite exercises the built binary
       # (dist/index.js) against an in-process Ollama stub and skips itself
       # when dist/ is absent.

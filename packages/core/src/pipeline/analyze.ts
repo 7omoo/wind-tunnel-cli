@@ -9,7 +9,8 @@
 //
 // All JSON comes back through constrained decoding (Output.object -> Ollama
 // `format`), so the generation schemas here are strict — no .catch/.default.
-// One deliberate exception: the trigger sample-id cap (see verdictGenSchema).
+// The one soft constraint is the trigger sample-id cap, carried as schema
+// metadata and trimmed in code (see verdictGenSchema).
 
 import { generateText, type LanguageModel, Output } from "ai";
 import { z } from "zod";
@@ -19,14 +20,14 @@ import { scoreSystemPrompt, scoreUserPrompt, verdictPrompts } from "../prompts/a
 import { riskLevelSchema, severitySchema } from "../schemas";
 import type { FlameResult, Opinion, OpinionScore, OutputLang, Trigger } from "../types";
 import { clampPromptInput } from "../util/sanitize";
-import { chunk, mapWaves } from "./batch";
-import { type ScoredOpinion, stratifiedSample } from "./sample";
+import { batchFailureWarnings, chunk, mapWaves } from "./batch";
+import { sampleForAnalysis } from "./sample";
 
 export const SCORE_BATCH_SIZE = 25;
 
 // Representative reactions cited per trigger. The count field carries how many
 // object; the ids are examples, so a handful is enough.
-export const MAX_SAMPLE_OPINION_IDS = 5;
+const MAX_SAMPLE_OPINION_IDS = 5;
 
 // === 1. Per-opinion scores (bulk model, batched) ===
 
@@ -99,25 +100,11 @@ export async function scoreOpinions(opts: ScoreOptions): Promise<ScoreResult> {
     opts.onProgress,
   );
 
+  const warnings = batchFailureWarnings("score", settled);
   const byId = new Map<string, OpinionScore>();
-  const warnings: string[] = [];
-  let failedBatches = 0;
-  let lastFailure: unknown;
-  settled.forEach((result, i) => {
-    if (result.status === "fulfilled") {
-      for (const s of result.value) {
-        byId.set(s.personaId, s);
-      }
-    } else {
-      failedBatches++;
-      lastFailure = result.reason;
-      const reason = result.reason instanceof Error ? result.reason.message : String(result.reason);
-      warnings.push(`score batch ${i + 1}/${batches.length} failed: ${reason}`);
-    }
-  });
-  if (failedBatches === batches.length && batches.length > 0) {
-    // cause preserved so the CLI error classifier can see the network layer.
-    throw new Error(`all ${batches.length} score batches failed`, { cause: lastFailure });
+  for (const result of settled) {
+    if (result.status !== "fulfilled") continue;
+    for (const s of result.value) byId.set(s.personaId, s);
   }
 
   // Opinions from failed batches score 0 so downstream stats stay complete;
@@ -168,7 +155,7 @@ export type VerdictOptions = {
   scores: OpinionScore[];
   outputLang: OutputLang;
   model: LanguageModel;
-  // Sample budgets; defaults reproduce "everything" for typical N (docs/DESIGN.md §4).
+  // Sample budget overrides (default: ANALYSIS_SAMPLE).
   sampleMaxCount?: number;
   sampleMaxChars?: number;
   random?: () => number;
@@ -177,14 +164,9 @@ export type VerdictOptions = {
 export async function analyzeVerdict(opts: VerdictOptions): Promise<FlameResult> {
   const topic = clampPromptInput(opts.topic);
 
-  const scoreById = new Map(opts.scores.map((s) => [s.personaId, s.score]));
-  const scored: ScoredOpinion[] = opts.opinions.map((o) => ({
-    opinion: o,
-    score: scoreById.get(o.personaId) ?? 0,
-  }));
-  const sample = stratifiedSample(scored, {
-    maxCount: opts.sampleMaxCount ?? 150,
-    maxChars: opts.sampleMaxChars ?? 60000,
+  const sample = sampleForAnalysis(opts.opinions, opts.scores, {
+    maxCount: opts.sampleMaxCount,
+    maxChars: opts.sampleMaxChars,
     random: opts.random,
   });
 

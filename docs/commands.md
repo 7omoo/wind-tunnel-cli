@@ -1,7 +1,7 @@
 # Commands & configuration
 
 Status: Implemented
-Last updated: 2026-10-06
+Last updated: 2026-10-22
 
 The README covers the quickstart; this page is the full reference.
 
@@ -22,7 +22,7 @@ Audience selection:
 | --- | --- | --- |
 | `--country <code>` | `usa` | persona pool: `jp` `usa` `in` `br` `fr` `kr` `vn` `be` (pull it first) |
 | `--personas <n>` | `100` | how many personas react (1–1000) |
-| `--region <name>` | nationwide | restrict to one region, e.g. `--region CA`, `--region 関東地方` |
+| `--region <name>` | nationwide | restrict to one region of a pulled pool, by value or label: `--region CA`, `--region California`, `--region 関東`; an unknown region is rejected with the country's list. Custom pools (`--personas-file`) take the value as given |
 | `--age-min / --age-max <n>` | none | age range filter |
 | `--sex <M\|F>` | none | sex filter (normalized codes work for every country) |
 | `--personas-file <path>` | — | use a custom JSON pool instead of the pulled one: an array of persona rows, or `{ "personas": [...], "version": "..." }`; rows without `country` are always included (fields: docs/DESIGN.md §7) |

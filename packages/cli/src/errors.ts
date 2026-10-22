@@ -8,11 +8,11 @@
 
 import { CuratedError, type ModelProvider } from "@wind-tunnel/core";
 import { version } from "../package.json";
-import { paint, useColor } from "./render/format";
+import { painter, useColor } from "./render/format";
 
 const ISSUES_URL = "https://github.com/7omoo/wind-tunnel-cli/issues";
 
-export type ErrorKind =
+type ErrorKind =
   | "connection"
   | "network"
   | "timeout"
@@ -173,8 +173,7 @@ export function renderError(
   stream: NodeJS.WriteStream = process.stderr,
   opts: { resumeId?: string } & ErrorContext = {},
 ): void {
-  const color = useColor(stream);
-  const c = (style: Parameters<typeof paint>[0], text: string) => paint(style, text, color);
+  const c = painter(useColor(stream));
   const classified = classifyError(e, opts);
 
   stream.write(`${c("red", "✗")} ${classified.headline}\n`);

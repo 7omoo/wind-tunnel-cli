@@ -21,7 +21,7 @@ import type {
   OpinionClusterProposition,
   OutputLang,
 } from "../types";
-import { chunk, mapWaves } from "./batch";
+import { batchFailureWarnings, chunk, mapWaves } from "./batch";
 
 export const STANCE_BATCH_SIZE = 10;
 
@@ -89,29 +89,16 @@ export async function classifyStances(opts: {
     opts.onProgress,
   );
 
-  const voteMatrix: number[][] = [];
-  const warnings: string[] = [];
-  let failedBatches = 0;
-  let lastFailure: unknown;
-  settled.forEach((result, i) => {
-    if (result.status === "fulfilled") {
-      voteMatrix.push(...result.value);
-    } else {
-      // A failed batch degrades to all-neutral rows (the original behavior);
-      // reported so a run summary can show classification coverage.
-      failedBatches++;
-      lastFailure = result.reason;
-      const batch = batches[i] ?? [];
-      for (const _ of batch) voteMatrix.push(new Array<number>(pCount).fill(0));
-      const reason = result.reason instanceof Error ? result.reason.message : String(result.reason);
-      warnings.push(`stance batch ${i + 1}/${batches.length} failed (rows neutral): ${reason}`);
-    }
-  });
-  if (failedBatches === batches.length && batches.length > 0) {
-    // An all-neutral matrix would cluster into a fabricated single camp, so a
-    // total outage fails like the score stage; cause kept for the CLI classifier.
-    throw new Error(`all ${batches.length} stance batches failed`, { cause: lastFailure });
-  }
+  // A total outage fails like the score stage: an all-neutral matrix would
+  // cluster into a fabricated single camp.
+  const warnings = batchFailureWarnings("stance", settled, " (rows neutral)");
+  // A failed batch degrades to all-neutral rows, reported above so a run
+  // summary can show classification coverage.
+  const voteMatrix = settled.flatMap((result, i) =>
+    result.status === "fulfilled"
+      ? result.value
+      : (batches[i] ?? []).map(() => new Array<number>(pCount).fill(0)),
+  );
   return { voteMatrix, warnings };
 }
 

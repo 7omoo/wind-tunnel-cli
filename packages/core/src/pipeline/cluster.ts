@@ -1,7 +1,9 @@
-// Cluster stage orchestration: propositions -> vote matrix -> PCA -> k-means
-// -> consensus / division / bridging / minority / group profiles.
-// Numeric analysis is local math; the model is only asked for semantics
-// (propositions, stances, labels, profiles).
+// Cluster stage orchestration. Phases, in order:
+//   1 propositions (model, on the sample)        2 vote matrix (model, every opinion)
+//   3 PCA projection                              4 axis labels (model; alongside 5-9)
+//   5 k-means groups (k by silhouette)            6-8 consensus / division / bridging
+//   9 group profiles + minority report (model)
+// Numeric analysis is local math; the model is only asked for semantics.
 
 import type { LanguageModel } from "ai";
 import { PCA } from "ml-pca";
@@ -26,7 +28,7 @@ import {
 // PCA axes kept for the map (PC1/PC2 are the defaults; the rest are selectable).
 const MAX_AXES = 5;
 
-export type ClusterModels = {
+type ClusterModels = {
   propositions: LanguageModel; // analysis role
   stances: LanguageModel; // bulk role
   axisLabels: LanguageModel; // bulk role
@@ -78,14 +80,14 @@ export async function clusterOpinions(
   // map can put any two of them on x/y (PC1/PC2 stay the defaults).
   const pca = new PCA(voteMatrix);
   const projected = pca.predict(voteMatrix).to2DArray();
-  const AXIS_COUNT = Math.min(MAX_AXES, projected[0]?.length ?? 2);
+  const axisCount = Math.min(MAX_AXES, projected[0]?.length ?? 2);
   const plotData = opinions.map((o, i) => {
     const row = projected[i] ?? [];
     return {
       personaId: o.personaId,
       x: row[0] ?? 0,
       y: row[1] ?? 0,
-      coords: row.slice(0, AXIS_COUNT),
+      coords: row.slice(0, axisCount),
     };
   });
 
@@ -95,7 +97,7 @@ export async function clusterOpinions(
   const axisLabelsPromise = labelAxes({
     propositions,
     loadings,
-    k: AXIS_COUNT,
+    k: axisCount,
     outputLang: opts.outputLang,
     model: opts.models.axisLabels,
   });
@@ -115,7 +117,7 @@ export async function clusterOpinions(
   const divisive = clusters.length >= 2 ? detectDivision(voteMatrix, labels, propositions) : [];
   const bridging = clusters.length >= 2 ? computeBridging(voteMatrix, labels, propositions) : [];
 
-  // Phases 4 + 9/10 in parallel.
+  // Phases 4 and 9 in parallel.
   const [axisLabels, profilesAndMinority] = await Promise.all([
     axisLabelsPromise,
     generateGroupProfilesAndMinority({

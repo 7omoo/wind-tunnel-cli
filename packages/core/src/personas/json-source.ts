@@ -2,6 +2,7 @@
 // test fixtures; country presets use the DuckDB pool instead.
 
 import { readFile } from "node:fs/promises";
+import { NATIONWIDE } from "../data/regions";
 import type { Country, RawPersona } from "../types";
 import { CuratedError } from "../util/curated-error";
 import { shuffle } from "../util/shuffle";
@@ -44,6 +45,6 @@ function matches(p: RawPersona, f: PersonaFilter): boolean {
   if (f.ageMin !== undefined && p.age < f.ageMin) return false;
   if (f.ageMax !== undefined && p.age > f.ageMax) return false;
   if (f.sex && f.sex !== "All" && p.sex !== f.sex && p.sex_norm !== f.sex) return false;
-  if (f.region && f.region !== "Nationwide" && p.region !== f.region) return false;
+  if (f.region && f.region !== NATIONWIDE && p.region !== f.region) return false;
   return true;
 }

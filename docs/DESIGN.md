@@ -1,7 +1,7 @@
 # Wind Tunnel CLI — Design
 
-Status: Implemented (v0.1)
-Last updated: 2026-10-06
+Status: Implemented
+Last updated: 2026-10-22
 
 This document records the architecture decisions behind the CLI.
 When code and this document disagree, code wins and this document gets updated.
@@ -33,7 +33,7 @@ Secondary: a hybrid profile that keeps the ~4 heavy analysis calls on a cloud mo
 | Binary name | `wt-cli` (user decision 2026-08-17). `wt` is off-limits (Windows Terminal's `wt.exe`). Accepted risk: Auth0's discontinued webtask CLI (npm package `wt-cli`, last publish 2023) also ships a `wt-cli` bin, so global installs collide on the few machines that still have it. The npm package is `wind-tunnel-cli`, matching the repo (`wt-cli` is taken on the registry; unscoped `wind-tunnel` was rejected at first publish, 2026-08-17 — npm's moniker rule flagged it as too similar to the existing `windtunnel`) |
 | Publishing | Single npm package `wind-tunnel-cli`; core is bundled in via tsup (`noExternal`) |
 | Distribution | npm first (`npx wind-tunnel-cli`); Docker image second (Linux servers / CI); single binary later (DuckDB is a native dependency of both ingest and pool sampling) |
-| Lint/format | Biome, line width 100, double quotes |
+| Lint/format | Biome, line width 100, double quotes; knip for unused exports and dependencies (`pnpm knip`, in CI) |
 | Tests | Vitest, five layers (unit / mocked pipeline / in-process commands / black-box E2E over an Ollama stub / self-skipping live integration) — see docs/testing.md |
 | No web framework | No Next.js, no HTTP server, no SSE — the pipeline is plain async functions and generators |
 
@@ -166,6 +166,10 @@ differences from Ollama shape the integration:
 - Each new schema costs a grammar compile on first use (up to ~60 s observed),
   which is one reason score entries map by position rather than per-batch id
   enums (§4).
+- `@ai-sdk/openai-compatible` is pinned to an exact version (3.0.36 with `ai`
+  7.0.66) so both resolve the same `@ai-sdk/provider` specification; with a
+  caret the two can drift apart and the wrapped LM Studio model stops
+  type-checking against `ai`'s LanguageModel. Re-pin whenever `ai` moves.
 
 **Profiles** bundle the choices:
 
@@ -335,8 +339,9 @@ cluster names, suggestions).
 
 | Command | Purpose |
 | --- | --- |
-| `wt-cli run "<message>"` | full pipeline; flags: `--country --personas --batch --profile --model-* --context` |
+| `wt-cli run "<message>"` | full pipeline; audience, framing and execution flags in docs/commands.md |
 | `wt-cli resume <run-id>` | continue an interrupted run from its checkpoint |
+| `wt-cli detail [run-id]` | every voice in full plus the proposition × group table; the latest run by default, `--group N` for one group |
 | `wt-cli personas pull <code>` | ingest a preset pool from Hugging Face |
 | `wt-cli personas list` | show installed pools (count, version, ingest date) |
 | `wt-cli doctor` | reachability and models present for the providers in use (Ollama: what is loaded, plus a parallelism note; LM Studio: loaded context) |

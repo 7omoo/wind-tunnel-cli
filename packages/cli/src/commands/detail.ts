@@ -5,13 +5,21 @@
 
 import { CuratedError, classifySentiment, isConsensus } from "@wind-tunnel/core";
 import { renderError } from "../errors";
-import { clip, displayWidth, paint, useColor, wrap } from "../render/format";
+import {
+  clip,
+  contentWidth,
+  displayWidth,
+  painter,
+  type Style,
+  useColor,
+  wrap,
+} from "../render/format";
 import { groupStyle, personaMeta, SENTIMENT_STYLE } from "../render/theme";
 import { openRun } from "../runs";
 
 // Stance percentage color: strong agreement green, strong disagreement red,
 // the contested middle stays gray.
-function stanceStyle(pct: number): Parameters<typeof paint>[0] {
+function stanceStyle(pct: number): Style {
   if (pct >= 65) return "green";
   if (pct <= 35) return "red";
   return "gray";
@@ -22,9 +30,8 @@ export async function detailCommand(
   opts: { group?: number },
 ): Promise<number> {
   const stdout = process.stdout;
-  const color = useColor(stdout);
-  const c = (style: Parameters<typeof paint>[0], text: string) => paint(style, text, color);
-  const w = Math.max(56, (stdout.columns ?? 78) - 2);
+  const c = painter(useColor(stdout));
+  const w = contentWidth(stdout);
 
   try {
     const { store, input } = await openRun(idOrPath);

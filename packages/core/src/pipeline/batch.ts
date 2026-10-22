@@ -1,7 +1,8 @@
 // Wave-based batch execution shared by the LLM stages (react, score, stance).
 // A wave of `concurrency` requests is issued with Promise.allSettled, then the
 // next wave starts — matching how the Ollama daemon actually serves requests
-// (slots, then queue). Per-item failures are captured, never thrown.
+// (slots, then queue). Per-item failures are captured, never thrown; the
+// batched stages report them through batchFailureWarnings.
 
 export function chunk<T>(items: T[], size: number): T[][] {
   const out: T[][] = [];
@@ -41,4 +42,28 @@ export async function mapWaves<T, R>(
     onProgress?.(results.length, items.length);
   }
   return results;
+}
+
+// Warnings for the rejected results of a batched stage, one per failed batch
+// ("<stage> batch i/n failed<note>: <reason>"), and a thrown error when every
+// batch failed — an empty result would make the next stage fabricate output
+// from nothing. The last reason rides along as `cause` so the CLI error
+// classifier can see the network layer.
+export function batchFailureWarnings(
+  stage: string,
+  settled: PromiseSettledResult<unknown>[],
+  note = "",
+): string[] {
+  const failures = settled.flatMap((result, index) =>
+    result.status === "rejected" ? [{ index, reason: result.reason }] : [],
+  );
+  if (failures.length === settled.length && settled.length > 0) {
+    throw new Error(`all ${settled.length} ${stage} batches failed`, {
+      cause: failures.at(-1)?.reason,
+    });
+  }
+  return failures.map(({ index, reason }) => {
+    const message = reason instanceof Error ? reason.message : String(reason);
+    return `${stage} batch ${index + 1}/${settled.length} failed${note}: ${message}`;
+  });
 }

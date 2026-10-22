@@ -6,16 +6,12 @@
 // language the reaction is written in. Analysis prompts (prompts/analyze,
 // prompts/cluster, prompts/suggest) use the output language instead.
 
-import { PERSONA_LANG_CODES, PERSONA_LANGUAGES } from "../data/languages";
+import { PERSONA_LANGUAGE_NAMES } from "../data/languages";
+import { DEFAULT_SITUATION } from "../data/situations";
 import type { PersonaLang, Situation } from "../types";
 import { quoteUntrusted } from "../util/sanitize";
 import { postContentBlock } from "./post";
-import { DEFAULT_SITUATION, lengthClause } from "./situation";
-
-// personaLang -> English language name for the "Respond in {X}" instruction.
-const LANGUAGE_NAMES = Object.fromEntries(
-  PERSONA_LANG_CODES.map((c) => [c, PERSONA_LANGUAGES[c].english]),
-) as Record<PersonaLang, string>;
+import { lengthClause } from "./situation";
 
 export function getSystemExtra(personaLang: PersonaLang): string {
   // Forcing every persona to "be critical" makes all of them nitpick even a
@@ -36,7 +32,7 @@ export function getPrompt(
 ): string {
   const len = lengthClause(situation, personaLang === "ja");
   if (personaLang !== "ja") {
-    const lang = LANGUAGE_NAMES[personaLang];
+    const lang = PERSONA_LANGUAGE_NAMES[personaLang];
     return `Read the following post/ad copy and give your own honest reaction. Maybe you like it, maybe something bothers you, maybe it just doesn't move you — say what you actually feel, true to your values. Respond in ${lang} ${len}.\n\n${postContentBlock(topic, false)}`;
   }
   return `以下の投稿・広告文を読み、あなた自身の率直な反応を述べてください。良いと感じた点、気になった点、あるいは特に何も感じないなら、そのまま — あなたの価値観に正直に、日本語で${len}回答してください。\n\n${postContentBlock(topic, true)}`;
@@ -66,7 +62,7 @@ export function buildPersonaSystemPrompt(
   personaLang: PersonaLang,
 ): string {
   if (personaLang !== "ja") {
-    const lang = LANGUAGE_NAMES[personaLang];
+    const lang = PERSONA_LANGUAGE_NAMES[personaLang];
     return `You are ${name}, a ${persona.age}-year-old ${persona.sex} working as ${persona.occupation}. ${persona.professional_persona}\n\nSpeak naturally as this person would. Give your honest, personal opinion based on your background and values. Respond in ${lang}.`;
   }
   return `あなたは${name}です。${persona.age}歳の${persona.sex}で、${persona.occupation}として働いています。${persona.professional_persona}\n\nこの人物として自然に話してください。あなたの背景と価値観に基づいた率直で個人的な意見を述べてください。日本語で回答してください。`;

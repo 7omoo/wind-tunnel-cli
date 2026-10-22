@@ -2,9 +2,7 @@
 // progress view, so a sentiment, a group, or a voice looks the same everywhere.
 
 import type { Opinion, Sentiment } from "@wind-tunnel/core";
-import type { paint } from "./format";
-
-export type Style = Parameters<typeof paint>[0];
+import type { Style } from "./format";
 
 export const SENTIMENT_STYLE: Record<Sentiment, Style> = {
   critical: "red",

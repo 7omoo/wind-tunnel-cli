@@ -1,7 +1,7 @@
 # Testing strategy
 
 Status: Implemented
-Last updated: 2026-10-06
+Last updated: 2026-10-22
 
 Five layers, from pure functions to the shipped binary. Each layer answers a
 question the layers below it cannot, and every layer runs green on a machine
@@ -61,8 +61,9 @@ pnpm test:coverage       # same + V8 coverage (text summary + coverage/index.htm
 WT_TEST_HF=1 pnpm exec vitest run packages/core/tests/ingest-hf.test.ts   # live ingest
 ```
 
-CI (`.github/workflows/ci.yml`) runs Biome → typecheck → build → the full
-suite with coverage → a smoke of the built binary, on Node 20 and 22.
+CI (`.github/workflows/ci.yml`) runs Biome → typecheck → knip (unused exports
+and dependencies) → build → the full suite with coverage → a smoke of the
+built binary, on Node 20 and 22.
 
 Reading the coverage number (~84% lines / ~74% branches without a daemon):
 the engine (`core/src/pipeline`, `run`, `analysis`, `util`) sits at 90-100%,

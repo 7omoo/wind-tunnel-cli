@@ -19,10 +19,12 @@ import {
 } from "@wind-tunnel/core";
 import {
   clip,
+  contentWidth,
   filledCells,
   formatDuration,
   gauge,
-  paint,
+  painter,
+  type Style,
   segmentedBar,
   useColor,
   wrap,
@@ -30,7 +32,7 @@ import {
 } from "./format";
 import { groupStyle, personaMeta, SENTIMENT_STYLE } from "./theme";
 
-const RISK_STYLE: Record<RiskLevel, Parameters<typeof paint>[0]> = {
+const RISK_STYLE: Record<RiskLevel, Style> = {
   Low: "green",
   Medium: "yellow",
   High: "red",
@@ -95,11 +97,10 @@ export function renderSummary(
   data: SummaryData,
   stream: NodeJS.WriteStream = process.stdout,
 ): string {
-  // Follow the terminal width (user decision 2026-08-17: no readability cap —
-  // the terminal's own width is the measure).
-  const WIDTH = Math.max(56, (stream.columns ?? 78) - 2);
+  // The terminal's own width is the measure; there is no readability cap.
+  const WIDTH = contentWidth(stream);
   const color = useColor(stream);
-  const c = (style: Parameters<typeof paint>[0], text: string) => paint(style, text, color);
+  const c = painter(color);
   const lines: string[] = [];
   const rule = c("dim", "─".repeat(WIDTH));
 
@@ -170,7 +171,7 @@ export function renderSummary(
       const style = groupStyle(gi);
       const bar = single
         ? ""
-        : `  ${paint(style, "█".repeat(Math.max(1, filledCells(size, maxSize, 16))), color)}`;
+        : `  ${c(style, "█".repeat(Math.max(1, filledCells(size, maxSize, 16))))}`;
       const count = single ? `all ${size}` : String(size);
 
       lines.push("");

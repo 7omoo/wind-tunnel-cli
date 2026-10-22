@@ -14,7 +14,6 @@ export {
 } from "./analysis/clustering";
 export {
   averageScore,
-  bucketScores,
   classifySentiment,
   percentages,
   type ScoreLike,
@@ -23,8 +22,13 @@ export {
   type SentimentCounts,
   sentimentCounts,
 } from "./analysis/scoring";
-export { COUNTRY_CODES, COUNTRY_LABELS, COUNTRY_TO_REGIONS } from "./data/countries";
-export { PERSONA_LANG_CODES, PERSONA_LANGUAGES } from "./data/languages";
+export {
+  COUNTRY_CODES,
+  COUNTRY_LABELS,
+  COUNTRY_TO_REGIONS,
+  resolveRegion,
+} from "./data/countries";
+export { PERSONA_LANGUAGE_NAMES } from "./data/languages";
 export type { RegionOption } from "./data/regions";
 export {
   DEFAULT_SITUATION,
@@ -86,7 +90,12 @@ export { chunk, mapWaves } from "./pipeline/batch";
 export { clusterOpinions } from "./pipeline/cluster";
 export { STANCE_BATCH_SIZE } from "./pipeline/cluster-stages";
 export { type ReactOptions, type ReactSummary, reactPersonas } from "./pipeline/react";
-export { type ScoredOpinion, stratifiedSample } from "./pipeline/sample";
+export {
+  ANALYSIS_SAMPLE,
+  type ScoredOpinion,
+  sampleForAnalysis,
+  stratifiedSample,
+} from "./pipeline/sample";
 export { suggestAlternatives } from "./pipeline/suggest";
 export {
   buildContextBlock,
@@ -113,8 +122,8 @@ export type {
 export {
   CONTEXT_MAX_CHARS,
   countrySchema,
+  defaultOutputLang,
   defaultPersonaLang,
-  normalizeOutputLang,
   outputLangName,
   outputLangSchema,
   personaLangSchema,

@@ -1,27 +1,12 @@
 # Release checklist
 
-Status: Draft
-Last updated: 2026-10-06
+Status: In use since 0.2.0
+Last updated: 2026-10-22
 
-The package is publish-ready (the `"private": true` safety catch was removed
-2026-08-17 as part of publish prep; the remaining gate is a human running the
-steps below).
-
-## Blockers (decide before the first release)
-
-1. ~~License.~~ **Resolved 2026-08-17: Apache-2.0.** `LICENSE` (canonical
-   text), `NOTICE`, and `THIRD_PARTY_LICENSES.md` are in place; both package
-   manifests carry the `license` field. The dependency audit found only
-   permissive licenses (bundled: Apache-2.0 ×9, MIT ×14, ISC ×1; runtime:
-   MIT ×3, BSD-3-Clause ×1 — zero copyleft). Regenerate the third-party file
-   after dependency changes: `node scripts/generate-third-party-notices.mjs`.
-2. ~~Tagline.~~ **Resolved 2026-08-17:** "Generate and cluster synthetic
-   opinions from hundreds of local AI personas — a CLI for testing messages
-   before you publish." Applied to package.json, README, and the GitHub repo
-   description. Descriptive over metaphorical by decision — the wind-tunnel
-   metaphor lives in the README body, not the tagline.
-
-No blockers remain — publishing is now just the steps below.
+Already in place: Apache-2.0 (`LICENSE`, `NOTICE`, `THIRD_PARTY_LICENSES.md`;
+both manifests carry the `license` field) and the tagline shared by
+package.json, the README and the GitHub description. Regenerate the
+third-party file after dependency changes: `pnpm notices`.
 
 ## Versioning policy (alpha = 0.x, decided 2026-08-17)
 
@@ -57,7 +42,7 @@ then edit). No CHANGELOG.md file to maintain in-repo.
 
 ```
 # from a clean main with CI green
-pnpm install && pnpm check && pnpm typecheck && pnpm test && pnpm build
+pnpm install && pnpm check && pnpm typecheck && pnpm knip && pnpm test && pnpm build
 
 # bump, then commit + tag by hand (npm creates neither inside this monorepo)
 cd packages/cli && npm version minor          # or patch
@@ -111,8 +96,8 @@ Notes:
 ## Publish steps (container image)
 
 ```
-docker build -t ghcr.io/7omoo/wind-tunnel-cli:v0.1.0 .
-docker push ghcr.io/7omoo/wind-tunnel-cli:v0.1.0
+docker build -t ghcr.io/7omoo/wind-tunnel-cli:vX.Y.Z .
+docker push ghcr.io/7omoo/wind-tunnel-cli:vX.Y.Z
 ```
 
 (Or add a tag-triggered workflow later; not wired yet on purpose — first

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   countrySchema,
+  defaultOutputLang,
   defaultPersonaLang,
-  normalizeOutputLang,
   outputLangName,
 } from "../src/schemas";
 
@@ -29,12 +29,12 @@ describe("defaultPersonaLang — reaction language per country", () => {
   });
 });
 
-describe("normalizeOutputLang / outputLangName — analysis output language", () => {
-  it("en passes through; everything else falls back to ja", () => {
-    expect(normalizeOutputLang("en")).toBe("en");
-    expect(normalizeOutputLang("ja")).toBe("ja");
-    expect(normalizeOutputLang(undefined)).toBe("ja");
-    expect(normalizeOutputLang("xx")).toBe("ja");
+describe("defaultOutputLang / outputLangName — analysis output language", () => {
+  it("writes the analysis in the pool's language when it can, otherwise in English", () => {
+    expect(defaultOutputLang("jp")).toBe("ja");
+    for (const c of countrySchema.options.filter((c) => c !== "jp")) {
+      expect(defaultOutputLang(c)).toBe("en");
+    }
   });
 
   it("outputLangName renders the English name used in analysis prompts", () => {

@@ -3,6 +3,8 @@
 // --personas-file. Preflight checks every configured provider before any work.
 
 import {
+  COUNTRY_TO_REGIONS,
+  type Country,
   CuratedError,
   createPipelineModels,
   dataRoot,
@@ -23,10 +25,11 @@ import {
   poolExists,
   type RunInput,
   RunStore,
+  resolveRegion,
   runsRoot,
   topicSchema,
 } from "@wind-tunnel/core";
-import { type CliFlags, loadConfig, type ResolvedConfig } from "../config";
+import { type CliFlags, type ConnectionSettings, loadConfig, providerSettings } from "../config";
 import { renderError } from "../errors";
 import { paint, useColor } from "../render/format";
 import { createProgressRenderer } from "../render/progress";
@@ -45,7 +48,7 @@ export type RunFlags = CliFlags & {
 // API key. Prints the exact fix and returns false.
 export async function preflightModels(
   models: ModelRoles,
-  cfg: Pick<ResolvedConfig, "geminiApiKey" | "ollamaHost" | "lmstudioHost">,
+  cfg: ConnectionSettings,
   stderr: NodeJS.WriteStream = process.stderr,
 ): Promise<boolean> {
   const specs = Object.values(models).map(parseModelSpec);
@@ -103,6 +106,21 @@ export async function preflightModels(
   return problems.length === 0;
 }
 
+// The region a run filters on. A pulled pool stores its region table's values,
+// so a value or its display label is accepted and anything else is rejected
+// before any work; a custom pool (--personas-file) keeps the value as given,
+// since its rows may carry any region.
+export function regionFilter(
+  flags: Pick<RunFlags, "region" | "personasFile">,
+  country: Country,
+): string | undefined {
+  if (!flags.region || flags.personasFile) return flags.region;
+  const value = resolveRegion(country, flags.region);
+  if (value) return value;
+  const options = COUNTRY_TO_REGIONS[country].map((r) => r.value).join(", ");
+  throw new CuratedError(`unknown region "${flags.region}" for ${country} — one of: ${options}`);
+}
+
 // Resume never re-samples (personas.json already exists); reaching the filter
 // stage without a real source means the run directory was tampered with.
 const NO_SOURCE: PersonaSource = {
@@ -125,6 +143,7 @@ export async function runCommand(message: string, flags: RunFlags): Promise<numb
     }
     const topic = parsedTopic.data;
     const cfg = await loadConfig(flags);
+    const region = regionFilter(flags, cfg.run.country);
 
     // Persona source: an explicit JSON pool wins; otherwise the local pool
     // database written by `personas pull`.
@@ -163,7 +182,7 @@ export async function runCommand(message: string, flags: RunFlags): Promise<numb
       ...(flags.context ? { context: flags.context } : {}),
       filter: {
         personaCount: cfg.run.personas,
-        ...(flags.region ? { region: flags.region } : {}),
+        ...(region ? { region } : {}),
         ...(flags.ageMin !== undefined ? { ageMin: flags.ageMin } : {}),
         ...(flags.ageMax !== undefined ? { ageMax: flags.ageMax } : {}),
         ...(flags.sex ? { sex: flags.sex } : {}),
@@ -187,17 +206,13 @@ export async function runCommand(message: string, flags: RunFlags): Promise<numb
 // Shared by run and resume: models, renderer, execution, summary.
 export async function executeAndRender(
   store: RunStore,
-  cfg: Pick<ResolvedConfig, "geminiApiKey" | "ollamaHost" | "lmstudioHost">,
+  cfg: ConnectionSettings,
   stderr: NodeJS.WriteStream,
   source: PersonaSource = NO_SOURCE,
 ): Promise<number> {
   const color = useColor(stderr);
   const input = await store.readInput();
-  const models = await createPipelineModels(input.models, {
-    ...(cfg.ollamaHost ? { ollamaBaseUrl: cfg.ollamaHost } : {}),
-    ...(cfg.lmstudioHost ? { lmstudioBaseUrl: cfg.lmstudioHost } : {}),
-    ...(cfg.geminiApiKey ? { geminiApiKey: cfg.geminiApiKey } : {}),
-  });
+  const models = await createPipelineModels(input.models, providerSettings(cfg));
 
   const providers = Object.values(input.models).map((spec) => parseModelSpec(spec).provider);
 

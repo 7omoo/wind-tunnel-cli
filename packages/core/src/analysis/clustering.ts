@@ -10,12 +10,10 @@ import type {
   OpinionClusterProposition,
 } from "../types";
 
-/**
- * Silhouette coefficient (for choosing k in k-means).
- * For each point: a = mean intra-cluster distance, b = mean distance to the
- * nearest other cluster; score = (b - a) / max(a, b), averaged over all points.
- * Points in singleton clusters score 0.
- */
+// Silhouette coefficient (for choosing k in k-means).
+// For each point: a = mean intra-cluster distance, b = mean distance to the
+// nearest other cluster; score = (b - a) / max(a, b), averaged over all points.
+// Points in singleton clusters score 0.
 export function silhouette(data: number[][], labels: number[]): number {
   const n = data.length;
   if (n <= 1) return 0;
@@ -23,12 +21,12 @@ export function silhouette(data: number[][], labels: number[]): number {
   const uniqueLabels = [...new Set(labels)];
   if (uniqueLabels.length <= 1) return 0;
 
+  // Rows share one length (the proposition count) and i < n indexes an
+  // existing row, so the `?? 0` / `?? []` fallbacks below only satisfy
+  // noUncheckedIndexedAccess; they are unreachable.
   function dist(a: number[], b: number[]): number {
     let sum = 0;
     for (let i = 0; i < a.length; i++) {
-      // Vote-matrix rows all share one length (= proposition count), so the
-      // index is populated on both sides; the type system can't guarantee it,
-      // so missing entries fall back to 0 (unreachable under the invariant).
       const av = a[i] ?? 0;
       const bv = b[i] ?? 0;
       sum += (av - bv) ** 2;
@@ -39,7 +37,6 @@ export function silhouette(data: number[][], labels: number[]): number {
   let totalS = 0;
   for (let i = 0; i < n; i++) {
     const myLabel = labels[i];
-    // i < n = data.length, so the row exists; fall back to [] for the type system.
     const rowI = data[i] ?? [];
 
     // a(i) = average distance to same cluster
@@ -90,24 +87,22 @@ export const TOP_PROPOSITIONS = 5;
 const BRIDGING_MIN_SUPPORT = 0.3;
 
 // Upper bound on the number of opinion groups tried by k-means.
-export const MAX_K = 5;
+const MAX_K = 5;
 
 // Below this best silhouette, any split is treated as fabricated structure
 // (Kaufman & Rousseeuw's "no substantial structure" threshold).
-export const SILHOUETTE_MIN = 0.25;
+const SILHOUETTE_MIN = 0.25;
 
 // Fixed k-means++ seed: the same vote matrix must always yield the same groups,
 // otherwise re-running an identical run can change the number of camps.
 const KMEANS_SEED = 42;
 
-/**
- * Splits the vote matrix rows into opinion groups: k-means (on the votes, not
- * a projection) for k = 2..min(MAX_K, n/2), keeping the k with the best
- * silhouette. Honesty rule: k-means always returns k groups, even for a
- * unanimous corpus — which then reads as two camps with near-identical beliefs
- * (observed in production) — so a best silhouette below SILHOUETTE_MIN
- * collapses to a single group.
- */
+// Splits the vote matrix rows into opinion groups: k-means (on the votes, not
+// a projection) for k = 2..min(MAX_K, n/2), keeping the k with the best
+// silhouette. Honesty rule: k-means always returns k groups, even for a
+// unanimous corpus — which then reads as two camps with near-identical beliefs
+// (observed in production) — so a best silhouette below SILHOUETTE_MIN
+// collapses to a single group.
 export function partitionVotes(voteMatrix: number[][]): { k: number; labels: number[] } {
   let best = { k: 1, labels: voteMatrix.map(() => 0), score: -1 };
   const maxK = Math.min(MAX_K, Math.floor(voteMatrix.length / 2));
@@ -123,11 +118,9 @@ export function partitionVotes(voteMatrix: number[][]): { k: number; labels: num
   return { k: best.k, labels: best.labels };
 }
 
-/**
- * Groups rows by label into clusters with their mean vote (centroid) and
- * member ids. Labels with no members — k-means can leave a centroid on votes
- * another one already covers — are dropped rather than shown as "group N (0)".
- */
+// Groups rows by label into clusters with their mean vote (centroid) and
+// member ids. Labels with no members — k-means can leave a centroid on votes
+// another one already covers — are dropped rather than shown as "group N (0)".
 export function buildClusters(
   labels: number[],
   k: number,
@@ -152,29 +145,38 @@ function sortedGroupLabels(labels: number[]): number[] {
   return [...new Set(labels)].sort((a, b) => a - b);
 }
 
-/**
- * Consensus ranking (product of Laplace-smoothed per-group agree rates).
- * Propositions all groups agree on score highest. Sorted by score, descending.
- * A ranking, not a verdict: filter with isConsensus before calling a row
- * consensus.
- */
+// The vote-matrix rows of each group, in sortedGroupLabels order.
+function rowsByGroup(voteMatrix: number[][], labels: number[]): number[][][] {
+  return sortedGroupLabels(labels).map((label) => voteMatrix.filter((_, i) => labels[i] === label));
+}
+
+// Share of a group's rows that agree (+1) with proposition j; 0 for an empty group.
+function agreeRate(rows: number[][], j: number): number {
+  const agree = rows.filter((row) => row[j] === 1).length;
+  return rows.length > 0 ? agree / rows.length : 0;
+}
+
+// agreeRate with Laplace smoothing, (1 + agree) / (2 + n): a tiny group can
+// neither veto nor carry a proposition on its own.
+function smoothedAgreeRate(rows: number[][], j: number): number {
+  const agree = rows.filter((row) => row[j] === 1).length;
+  return (1 + agree) / (2 + rows.length);
+}
+
+// Consensus ranking (product of Laplace-smoothed per-group agree rates).
+// Propositions all groups agree on score highest. Sorted by score, descending.
+// A ranking, not a verdict: filter with isConsensus before calling a row
+// consensus.
 export function detectConsensus(
   voteMatrix: number[][],
   labels: number[],
   propositions: OpinionClusterProposition[],
 ): OpinionClusterConsensus[] {
-  const uniqueLabels = sortedGroupLabels(labels);
-
+  const groups = rowsByGroup(voteMatrix, labels);
   return propositions
     .map((prop, j) => {
-      const groupSupport = uniqueLabels.map((label) => {
-        const members = voteMatrix.filter((_, i) => labels[i] === label);
-        const agree = members.filter((row) => row[j] === 1).length;
-        return (1 + agree) / (2 + members.length); // Laplace smoothing
-      });
-
+      const groupSupport = groups.map((rows) => smoothedAgreeRate(rows, j));
       const score = groupSupport.reduce((acc, p) => acc * p, 1);
-
       return { propositionId: prop.id, text: prop.text, score, groupSupport };
     })
     .sort((a, b) => b.score - a.score);
@@ -183,65 +185,44 @@ export function detectConsensus(
 // Minimum per-group support for a proposition to count as consensus.
 const CONSENSUS_MIN_SUPPORT = 0.6;
 
-/**
- * Whether a detectConsensus row is actually consensus: every group's support
- * is at least CONSENSUS_MIN_SUPPORT (with a single group, that group alone).
- * detectConsensus only ranks — by the product of the supports, with no
- * threshold — so a proposition the groups split on (support 0.97 / 0.09 / 0.96
- * / 0.40 / 0.10) could still top the list and be reported as consensus.
- * Same definition as the hosted app, which fixed the same symptom on
- * 2026-09-29 and filters both its stored output and its screen with it; the
- * CLI copy predated that fix. Callers reading saved runs filter with it too,
- * since runs written before this check still carry unfiltered rows.
- */
+// Whether a detectConsensus row is actually consensus: every group's support
+// is at least CONSENSUS_MIN_SUPPORT (with a single group, that group alone).
+// detectConsensus only ranks — by the product of the supports, with no
+// threshold — so a proposition the groups split on (support 0.97 / 0.09 / 0.96
+// / 0.40 / 0.10) could still top the list and be reported as consensus.
+// Callers reading saved runs filter with it too: runs written before this
+// check still carry unfiltered rows.
 export function isConsensus(c: Pick<OpinionClusterConsensus, "groupSupport">): boolean {
   return c.groupSupport.length > 0 && c.groupSupport.every((p) => p >= CONSENSUS_MIN_SUPPORT);
 }
 
-/**
- * Division detection (max - min spread of per-group agree rates). Sorted by
- * spread, descending.
- */
+// Division detection (max - min spread of per-group agree rates). Sorted by
+// spread, descending.
 export function detectDivision(
   voteMatrix: number[][],
   labels: number[],
   propositions: OpinionClusterProposition[],
 ): OpinionClusterDivisive[] {
-  const uniqueLabels = sortedGroupLabels(labels);
-
+  const groups = rowsByGroup(voteMatrix, labels);
   return propositions
     .map((prop, j) => {
-      const groupSupport = uniqueLabels.map((label) => {
-        const members = voteMatrix.filter((_, i) => labels[i] === label);
-        const agree = members.filter((row) => row[j] === 1).length;
-        return members.length > 0 ? agree / members.length : 0;
-      });
-
+      const groupSupport = groups.map((rows) => agreeRate(rows, j));
       const spread = Math.max(...groupSupport) - Math.min(...groupSupport);
-
       return { propositionId: prop.id, text: prop.text, spread, groupSupport };
     })
     .sort((a, b) => b.spread - a.spread);
 }
 
-/**
- * Bridging propositions (support above BRIDGING_MIN_SUPPORT in every group).
- * bridgingScore = minGroupSupport * meanGroupSupport, descending, top TOP_PROPOSITIONS.
- */
+// Bridging propositions (support above BRIDGING_MIN_SUPPORT in every group).
+// bridgingScore = minGroupSupport * meanGroupSupport, descending, top TOP_PROPOSITIONS.
 export function computeBridging(
   voteMatrix: number[][],
   labels: number[],
   propositions: OpinionClusterProposition[],
 ): OpinionClusterBridging[] {
-  const uniqueLabels = sortedGroupLabels(labels);
-
+  const groups = rowsByGroup(voteMatrix, labels);
   const results = propositions.map((prop, j) => {
-    const groupSupport = uniqueLabels.map((label) => {
-      const members = voteMatrix.filter((_, i) => labels[i] === label);
-      const agree = members.filter((row) => row[j] === 1).length;
-      return members.length > 0 ? agree / members.length : 0;
-    });
-
+    const groupSupport = groups.map((rows) => agreeRate(rows, j));
     const minGroupSupport = Math.min(...groupSupport);
     const meanGroupSupport = groupSupport.reduce((a, b) => a + b, 0) / groupSupport.length;
     const bridgingScore = minGroupSupport * meanGroupSupport;
@@ -261,15 +242,13 @@ export function computeBridging(
     .slice(0, TOP_PROPOSITIONS);
 }
 
-/**
- * The n propositions with the largest |loading| on each of the first k
- * principal components — the material the axis-label stage names each axis
- * from (labelAxes).
- *
- * `loadings` is ml-pca's getLoadings(), which is Uᵀ: rows are principal
- * components, columns are propositions, so loadings[c][j] is the weight of
- * proposition j on component c.
- */
+// The n propositions with the largest |loading| on each of the first k
+// principal components — the material the axis-label stage names each axis
+// from (labelAxes).
+//
+// `loadings` is ml-pca's getLoadings(), which is Uᵀ: rows are principal
+// components, columns are propositions, so loadings[c][j] is the weight of
+// proposition j on component c.
 export function topPropositionsByAxis(
   propositions: { text: string }[],
   loadings: number[][],
@@ -291,12 +270,10 @@ export type MinorityDivergence = {
   overallStance: number; // size-weighted mean of all cluster centroids
 };
 
-/**
- * The minority report's numbers: the smallest cluster (first one on ties) and
- * the `top` propositions where its centroid is farthest from the size-weighted
- * overall centroid. null with fewer than two clusters. Computed here so the
- * model only interprets these numbers, never derives them.
- */
+// The minority report's numbers: the smallest cluster (first one on ties) and
+// the `top` propositions where its centroid is farthest from the size-weighted
+// overall centroid. null with fewer than two clusters. Computed here so the
+// model only interprets these numbers, never derives them.
 export function findMinorityDivergence(
   clusters: OpinionCluster[],
   propositions: OpinionClusterProposition[],

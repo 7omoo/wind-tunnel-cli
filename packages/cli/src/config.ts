@@ -6,13 +6,18 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
+  type Country,
   CuratedError,
   configRoot,
   countrySchema,
   DEFAULT_MODEL_ROLES,
   DEFAULT_SITUATION,
+  defaultOutputLang,
   type ModelRoles,
+  type OutputLang,
   outputLangSchema,
+  type ProviderSettings,
+  type Situation,
   situationSchema,
 } from "@wind-tunnel/core";
 import { parse as parseToml } from "smol-toml";
@@ -23,6 +28,10 @@ import { z } from "zod";
 const HYBRID_ANALYSIS_MODEL = "gemini:gemini-3.1-pro-preview";
 
 const profileSchema = z.enum(["local", "hybrid"]);
+export const PROFILE_OPTIONS = profileSchema.options;
+
+// Upper bounds for the run settings, enforced on every source (file, env, flag).
+const LIMITS = { personas: 1000, batch: 64 };
 
 const fileSchema = z.object({
   profile: profileSchema.optional(),
@@ -37,8 +46,8 @@ const fileSchema = z.object({
   run: z
     .object({
       country: countrySchema.optional(),
-      personas: z.number().int().min(1).max(1000).optional(),
-      batch: z.number().int().min(1).max(64).optional(),
+      personas: z.number().int().min(1).max(LIMITS.personas).optional(),
+      batch: z.number().int().min(1).max(LIMITS.batch).optional(),
       output_lang: outputLangSchema.optional(),
       situation: situationSchema.optional(),
     })
@@ -46,7 +55,7 @@ const fileSchema = z.object({
   ollama: z.object({ host: z.string().optional() }).optional(),
   lmstudio: z.object({ host: z.string().optional() }).optional(),
 });
-export type FileConfig = z.infer<typeof fileSchema>;
+type FileConfig = z.infer<typeof fileSchema>;
 
 // Flags a command may pass in (already typed by commander parsing).
 export type CliFlags = {
@@ -63,19 +72,34 @@ export type CliFlags = {
 };
 
 export type ResolvedConfig = {
-  profile: "local" | "hybrid";
+  profile: z.infer<typeof profileSchema>;
   models: ModelRoles;
   geminiApiKey?: string;
   ollamaHost?: string;
   lmstudioHost?: string;
   run: {
-    country: z.infer<typeof countrySchema>;
+    country: Country;
     personas: number;
     batch: number;
-    outputLang: z.infer<typeof outputLangSchema>;
-    situation: z.infer<typeof situationSchema>;
+    outputLang: OutputLang;
+    situation: Situation;
   };
 };
+
+// The connection half of the config: what resume and doctor share with run.
+export type ConnectionSettings = Pick<
+  ResolvedConfig,
+  "geminiApiKey" | "ollamaHost" | "lmstudioHost"
+>;
+
+// The same settings under the names the model registry uses.
+export function providerSettings(cfg: ConnectionSettings): ProviderSettings {
+  return {
+    ...(cfg.ollamaHost ? { ollamaBaseUrl: cfg.ollamaHost } : {}),
+    ...(cfg.lmstudioHost ? { lmstudioBaseUrl: cfg.lmstudioHost } : {}),
+    ...(cfg.geminiApiKey ? { geminiApiKey: cfg.geminiApiKey } : {}),
+  };
+}
 
 // Hosts may be given as "host:port"; the HTTP clients need a full base URL.
 function withScheme(host: string | undefined): string | undefined {
@@ -92,7 +116,11 @@ function intFrom(value: string | number | undefined, label: string): number | un
 
 // A setting restricted to an enum. The rejection lists every valid option
 // instead of surfacing zod's issue array as the message.
-function enumSetting<S extends z.ZodEnum>(schema: S, raw: unknown, label: string): z.infer<S> {
+export function enumSetting<S extends z.ZodEnum>(
+  schema: S,
+  raw: unknown,
+  label: string,
+): z.infer<S> {
   const parsed = schema.safeParse(raw);
   if (parsed.success) return parsed.data;
   throw new CuratedError(`unknown ${label} "${raw}" — one of: ${schema.options.join(", ")}`);
@@ -150,21 +178,20 @@ export function resolveConfig(opts: {
     flags.country ?? env.WT_COUNTRY ?? file.run?.country ?? "usa",
     "country",
   );
-  // Analysis language follows the pool's country unless set explicitly, so the
-  // default experience is monolingual end to end (usa -> en, jp -> ja, ...).
-  const derivedOutputLang = country === "jp" ? "ja" : "en";
   const personas =
     intFrom(flags.personas, "--personas") ??
     intFrom(env.WT_PERSONAS, "WT_PERSONAS") ??
     file.run?.personas ??
     100;
-  if (personas > 1000) throw new CuratedError("--personas must be 1000 or fewer");
+  if (personas > LIMITS.personas) {
+    throw new CuratedError(`--personas must be ${LIMITS.personas} or fewer`);
+  }
   const batch =
     intFrom(flags.batch, "--batch") ?? intFrom(env.WT_BATCH, "WT_BATCH") ?? file.run?.batch ?? 5;
-  if (batch > 64) throw new CuratedError("--batch must be 64 or fewer");
+  if (batch > LIMITS.batch) throw new CuratedError(`--batch must be ${LIMITS.batch} or fewer`);
   const outputLang = enumSetting(
     outputLangSchema,
-    flags.outputLang ?? env.WT_OUTPUT_LANG ?? file.run?.output_lang ?? derivedOutputLang,
+    flags.outputLang ?? env.WT_OUTPUT_LANG ?? file.run?.output_lang ?? defaultOutputLang(country),
     "output language",
   );
   const situation = enumSetting(

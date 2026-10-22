@@ -21,10 +21,8 @@ function csvRow(values: unknown[]): string {
   return values.map(csvEscape).join(",");
 }
 
-/**
- * Flatten opinions to CSV. Includes a run_id column so multiple runs can be
- * concatenated and still separated cleanly.
- */
+// Flatten opinions to CSV. Includes a run_id column so multiple runs can be
+// concatenated and still separated cleanly.
 export function opinionsToCsv(
   opinions: Opinion[],
   context: { runId?: string; topic?: string; country?: string } = {},

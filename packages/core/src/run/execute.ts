@@ -17,7 +17,7 @@ import type { PersonaSource } from "../personas/source";
 import { analyzeVerdict, scoreOpinions } from "../pipeline/analyze";
 import { clusterOpinions } from "../pipeline/cluster";
 import { reactPersonas } from "../pipeline/react";
-import { type ScoredOpinion, stratifiedSample } from "../pipeline/sample";
+import { sampleForAnalysis } from "../pipeline/sample";
 import { suggestAlternatives } from "../pipeline/suggest";
 import { defaultPersonaLang } from "../schemas";
 import type { Opinion, RawPersona } from "../types";
@@ -148,15 +148,7 @@ export async function executeRun(store: RunStore, deps: ExecuteDeps): Promise<Ru
       emit({ type: "stage", stage: "cluster" });
       await store.patchStatus({ stage: "cluster" });
       try {
-        const scoreById = new Map(scores.map((s) => [s.personaId, s.score]));
-        const scored: ScoredOpinion[] = opinions.map((o) => ({
-          opinion: o,
-          score: scoreById.get(o.personaId) ?? 0,
-        }));
-        const propositionSample = stratifiedSample(scored, {
-          maxCount: 150,
-          maxChars: 60000,
-        }).map((s) => s.opinion);
+        const propositionSample = sampleForAnalysis(opinions, scores).map((s) => s.opinion);
         const clusterRun = await clusterOpinions({
           topic: input.topic,
           opinions,

@@ -5,6 +5,7 @@
 import { access } from "node:fs/promises";
 import { join } from "node:path";
 import { DuckDBConnection, DuckDBInstance } from "@duckdb/node-api";
+import { NATIONWIDE } from "../data/regions";
 import type { Country, RawPersona } from "../types";
 import { PERSONA_COLUMNS } from "./pool-schema";
 import type { PersonaFilter, PersonaSource } from "./source";
@@ -20,6 +21,11 @@ export type PersonaPool = PersonaSource & {
   list(): Promise<PoolInfo[]>;
   close(): void;
 };
+
+// Nullable text columns: NULL -> undefined, RawPersona's optional fields.
+function optionalText(value: unknown): string | undefined {
+  return value === null || value === undefined ? undefined : String(value);
+}
 
 export async function poolExists(poolPath: string): Promise<boolean> {
   try {
@@ -51,7 +57,7 @@ export async function openPersonaPool(poolPath: string): Promise<PersonaPool> {
         conds.push("(sex_norm = ? OR sex = ?)");
         params.push(filter.sex, filter.sex);
       }
-      if (filter.region && filter.region !== "Nationwide") {
+      if (filter.region && filter.region !== NATIONWIDE) {
         conds.push("region = ?");
         params.push(filter.region);
       }
@@ -62,20 +68,20 @@ export async function openPersonaPool(poolPath: string): Promise<PersonaPool> {
          ORDER BY random() LIMIT ?`,
         params,
       );
-      const rows = await result.getRows();
-      return rows.map((r) => ({
-        uuid: String(r[0]),
-        country: String(r[1]),
-        age: Number(r[2]),
-        sex: String(r[3]),
-        sex_norm: r[4] === null ? undefined : String(r[4]),
-        occupation: String(r[5] ?? ""),
-        marital_status: String(r[6] ?? ""),
-        education_level: r[7] === null ? undefined : String(r[7]),
-        region: r[8] === null ? undefined : String(r[8]),
-        locality: r[9] === null ? undefined : String(r[9]),
-        professional_persona: String(r[10] ?? ""),
-        persona: String(r[11] ?? ""),
+      const rows = await result.getRowObjects();
+      return rows.map((row) => ({
+        uuid: String(row.uuid),
+        country: String(row.country),
+        age: Number(row.age),
+        sex: String(row.sex),
+        sex_norm: optionalText(row.sex_norm),
+        occupation: String(row.occupation ?? ""),
+        marital_status: String(row.marital_status ?? ""),
+        education_level: optionalText(row.education_level),
+        region: optionalText(row.region),
+        locality: optionalText(row.locality),
+        professional_persona: String(row.professional_persona ?? ""),
+        persona: String(row.persona ?? ""),
       }));
     },
 
@@ -83,19 +89,20 @@ export async function openPersonaPool(poolPath: string): Promise<PersonaPool> {
       const result = await connection.run("SELECT version FROM pool_meta WHERE country = ?", [
         country,
       ]);
-      const rows = await result.getRows();
-      return rows[0] ? String(rows[0][0]) : `none-${country}`;
+      const [row] = await result.getRowObjects();
+      return row ? String(row.version) : `none-${country}`;
     },
 
     async list(): Promise<PoolInfo[]> {
       const result = await connection.run(
-        "SELECT country, version, row_count::int, ingested_at FROM pool_meta ORDER BY country",
+        `SELECT country, version, row_count::int AS row_count, ingested_at
+         FROM pool_meta ORDER BY country`,
       );
-      return (await result.getRows()).map((r) => ({
-        country: String(r[0]),
-        version: String(r[1]),
-        rowCount: Number(r[2]),
-        ingestedAt: String(r[3]),
+      return (await result.getRowObjects()).map((row) => ({
+        country: String(row.country),
+        version: String(row.version),
+        rowCount: Number(row.row_count),
+        ingestedAt: String(row.ingested_at),
       }));
     },
 

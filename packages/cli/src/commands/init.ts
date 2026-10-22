@@ -1,12 +1,18 @@
 // `wt-cli init` — interactive first-run: write config.toml with explicit
 // values (so model-name defaults are pinned in the user's file, not in code).
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { createInterface } from "node:readline/promises";
-import { COUNTRY_CODES, COUNTRY_LABELS, DEFAULT_MODEL_ROLES } from "@wind-tunnel/core";
+import {
+  COUNTRY_CODES,
+  COUNTRY_LABELS,
+  countrySchema,
+  DEFAULT_MODEL_ROLES,
+  defaultOutputLang,
+} from "@wind-tunnel/core";
 import { stringify as stringifyToml } from "smol-toml";
-import { configFilePath, resolveConfig } from "../config";
+import { configFilePath, enumSetting, resolveConfig } from "../config";
 import { renderError } from "../errors";
 import { paint, useColor } from "../render/format";
 
@@ -22,13 +28,10 @@ export async function initCommand(): Promise<number> {
 
   try {
     const path = configFilePath();
-    let exists = false;
-    try {
-      await readFile(path, "utf8");
-      exists = true;
-    } catch {
-      // no existing config
-    }
+    const exists = await access(path).then(
+      () => true,
+      () => false,
+    );
     if (exists) {
       const overwrite = await ask(`${path} exists — overwrite? [y/N]`, "N");
       if (!/^y(es)?$/i.test(overwrite)) {
@@ -40,13 +43,10 @@ export async function initCommand(): Promise<number> {
     process.stderr.write(
       `${paint("dim", `countries: ${COUNTRY_CODES.map((c) => `${c}=${COUNTRY_LABELS[c]}`).join(" ")}`, color)}\n`,
     );
-    const country = await ask("default country?", "usa");
+    const country = enumSetting(countrySchema, await ask("default country?", "usa"), "country");
     const personas = await ask("personas per run?", "100");
     const batch = await ask("batch size (requests in flight)?", "5");
-    const outputLang = await ask(
-      "analysis output language? [ja/en]",
-      country === "jp" ? "ja" : "en",
-    );
+    const outputLang = await ask("analysis output language? [ja/en]", defaultOutputLang(country));
     const bulk = await ask("bulk model (reactions, ~100 calls)?", DEFAULT_MODEL_ROLES.bulk);
     const analysis = await ask("analysis model (verdict, ~4 calls)?", DEFAULT_MODEL_ROLES.analysis);
 
@@ -63,10 +63,11 @@ export async function initCommand(): Promise<number> {
 
     // Validate through the same schema the loader uses — a config written by
     // init must always load.
-    resolveConfig({ fileText: stringifyToml(config) });
+    const text = stringifyToml(config);
+    resolveConfig({ fileText: text });
 
     await mkdir(dirname(path), { recursive: true });
-    await writeFile(path, `${stringifyToml(config)}\n`, "utf8");
+    await writeFile(path, `${text}\n`, "utf8");
     process.stderr.write(`${paint("green", "✓", color)} wrote ${path}\n`);
     return 0;
   } catch (e) {
