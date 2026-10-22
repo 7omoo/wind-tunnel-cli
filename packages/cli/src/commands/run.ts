@@ -29,7 +29,7 @@ import {
   runsRoot,
   topicSchema,
 } from "@wind-tunnel/core";
-import { type CliFlags, loadConfig, type ResolvedConfig } from "../config";
+import { type CliFlags, type ConnectionSettings, loadConfig, providerSettings } from "../config";
 import { renderError } from "../errors";
 import { paint, useColor } from "../render/format";
 import { createProgressRenderer } from "../render/progress";
@@ -48,7 +48,7 @@ export type RunFlags = CliFlags & {
 // API key. Prints the exact fix and returns false.
 export async function preflightModels(
   models: ModelRoles,
-  cfg: Pick<ResolvedConfig, "geminiApiKey" | "ollamaHost" | "lmstudioHost">,
+  cfg: ConnectionSettings,
   stderr: NodeJS.WriteStream = process.stderr,
 ): Promise<boolean> {
   const specs = Object.values(models).map(parseModelSpec);
@@ -206,17 +206,13 @@ export async function runCommand(message: string, flags: RunFlags): Promise<numb
 // Shared by run and resume: models, renderer, execution, summary.
 export async function executeAndRender(
   store: RunStore,
-  cfg: Pick<ResolvedConfig, "geminiApiKey" | "ollamaHost" | "lmstudioHost">,
+  cfg: ConnectionSettings,
   stderr: NodeJS.WriteStream,
   source: PersonaSource = NO_SOURCE,
 ): Promise<number> {
   const color = useColor(stderr);
   const input = await store.readInput();
-  const models = await createPipelineModels(input.models, {
-    ...(cfg.ollamaHost ? { ollamaBaseUrl: cfg.ollamaHost } : {}),
-    ...(cfg.lmstudioHost ? { lmstudioBaseUrl: cfg.lmstudioHost } : {}),
-    ...(cfg.geminiApiKey ? { geminiApiKey: cfg.geminiApiKey } : {}),
-  });
+  const models = await createPipelineModels(input.models, providerSettings(cfg));
 
   const providers = Object.values(input.models).map((spec) => parseModelSpec(spec).provider);
 
