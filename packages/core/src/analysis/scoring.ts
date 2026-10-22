@@ -27,24 +27,6 @@ export function sentimentCounts(scores: ScoreLike[]): SentimentCounts {
   return counts;
 }
 
-// Returns the three buckets sorted: critical ascending (most critical first),
-// favorable descending, neutral descending.
-export function bucketScores<T extends ScoreLike>(items: T[]): Record<Sentiment, T[]> {
-  const critical: T[] = [];
-  const favorable: T[] = [];
-  const neutral: T[] = [];
-  for (const it of items) {
-    const tier = classifySentiment(it.score);
-    if (tier === "critical") critical.push(it);
-    else if (tier === "favorable") favorable.push(it);
-    else neutral.push(it);
-  }
-  critical.sort((a, b) => a.score - b.score);
-  favorable.sort((a, b) => b.score - a.score);
-  neutral.sort((a, b) => b.score - a.score);
-  return { critical, neutral, favorable };
-}
-
 export function percentages(counts: SentimentCounts, total: number): SentimentCounts {
   if (total === 0) return { critical: 0, neutral: 0, favorable: 0 };
   return {

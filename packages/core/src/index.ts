@@ -14,7 +14,6 @@ export {
 } from "./analysis/clustering";
 export {
   averageScore,
-  bucketScores,
   classifySentiment,
   percentages,
   type ScoreLike,

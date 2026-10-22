@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   averageScore,
-  bucketScores,
   classifySentiment,
   percentages,
   SENTIMENT_THRESHOLD,
@@ -29,23 +28,6 @@ describe("sentimentCounts", () => {
   it("counts each tier", () => {
     const scores = [{ score: -50 }, { score: -20 }, { score: 0 }, { score: 20 }, { score: 90 }];
     expect(sentimentCounts(scores)).toEqual({ critical: 2, neutral: 1, favorable: 2 });
-  });
-});
-
-describe("bucketScores", () => {
-  it("splits and sorts (critical asc, favorable/neutral desc)", () => {
-    const items = [
-      { score: -30, id: "a" },
-      { score: -80, id: "b" },
-      { score: 5, id: "c" },
-      { score: -10, id: "d" },
-      { score: 90, id: "e" },
-      { score: 25, id: "f" },
-    ];
-    const b = bucketScores(items);
-    expect(b.critical.map((x) => x.id)).toEqual(["b", "a"]); // -80, -30
-    expect(b.favorable.map((x) => x.id)).toEqual(["e", "f"]); // 90, 25
-    expect(b.neutral.map((x) => x.id)).toEqual(["c", "d"]); // 5, -10
   });
 });
 
