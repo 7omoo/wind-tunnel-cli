@@ -43,3 +43,14 @@ export const COUNTRY_TO_REGIONS: Record<Country, RegionOption[]> = {
   vn: VN_REGIONS,
   be: BE_REGIONS,
 };
+
+// Maps a region the user typed to the value stored in the pool: the value
+// itself or its display label ("CA" or "California", "関東地方" or "関東"),
+// case-insensitively; Nationwide resolves to itself. undefined when the
+// country has no such region.
+export function resolveRegion(country: Country, input: string): string | undefined {
+  const query = input.trim().toLowerCase();
+  return COUNTRY_TO_REGIONS[country].find(
+    (r) => r.value.toLowerCase() === query || r.label.toLowerCase() === query,
+  )?.value;
+}

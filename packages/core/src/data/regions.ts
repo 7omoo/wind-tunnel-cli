@@ -5,6 +5,15 @@
 
 export type RegionOption = { value: string; label: string };
 
+// The filter-bypass entry every country lists first.
+export const NATIONWIDE = "Nationwide";
+
+// A country's pool values without the bypass: what ingest validates against
+// and what a run may filter on.
+export function regionValues(options: readonly RegionOption[]): string[] {
+  return options.filter((o) => o.value !== NATIONWIDE).map((o) => o.value);
+}
+
 export const JP_REGIONS: RegionOption[] = [
   { value: "Nationwide", label: "Nationwide" },
   { value: "北海道地方", label: "北海道" },

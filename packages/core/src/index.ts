@@ -22,7 +22,12 @@ export {
   type SentimentCounts,
   sentimentCounts,
 } from "./analysis/scoring";
-export { COUNTRY_CODES, COUNTRY_LABELS, COUNTRY_TO_REGIONS } from "./data/countries";
+export {
+  COUNTRY_CODES,
+  COUNTRY_LABELS,
+  COUNTRY_TO_REGIONS,
+  resolveRegion,
+} from "./data/countries";
 export { PERSONA_LANG_CODES, PERSONA_LANGUAGES } from "./data/languages";
 export type { RegionOption } from "./data/regions";
 export {

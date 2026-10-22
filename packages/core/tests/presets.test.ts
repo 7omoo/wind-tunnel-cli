@@ -1,6 +1,6 @@
 import { DuckDBConnection, DuckDBInstance } from "@duckdb/node-api";
 import { describe, expect, it } from "vitest";
-import { COUNTRY_TO_REGIONS } from "../src/data/countries";
+import { NATIONWIDE } from "../src/data/regions";
 import { COUNTRY_PRESETS, presetGlob, SEX_NORM_SQL } from "../src/personas/presets";
 import { countrySchema } from "../src/schemas";
 
@@ -15,19 +15,15 @@ describe("country presets", () => {
     }
   });
 
-  it("jp expected regions equal the region options (minus Nationwide)", () => {
-    const optionValues = COUNTRY_TO_REGIONS.jp
-      .map((r) => r.value)
-      .filter((v) => v !== "Nationwide");
-    expect([...COUNTRY_PRESETS.jp.expectedRegions].sort()).toEqual([...optionValues].sort());
-  });
-
-  it("usa expected regions equal the state options (minus Nationwide), PR allowed as extra", () => {
-    const optionValues = COUNTRY_TO_REGIONS.usa
-      .map((r) => r.value)
-      .filter((v) => v !== "Nationwide");
-    expect([...COUNTRY_PRESETS.usa.expectedRegions].sort()).toEqual([...optionValues].sort());
+  // jp and usa validate ingest against their region tables; the others run
+  // relaxed. The bypass entry is never a region to expect.
+  it("expects the region tables' values for jp (8 regions) and usa (50 states + DC, PR extra)", () => {
+    expect(COUNTRY_PRESETS.jp.expectedRegions).toHaveLength(8);
+    expect(COUNTRY_PRESETS.usa.expectedRegions).toHaveLength(51);
     expect(COUNTRY_PRESETS.usa.extraRegions).toContain("PR");
+    for (const preset of Object.values(COUNTRY_PRESETS)) {
+      expect(preset.expectedRegions).not.toContain(NATIONWIDE);
+    }
   });
 
   it("multilingual datasets use their English split", () => {

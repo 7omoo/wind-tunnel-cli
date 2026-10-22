@@ -5,6 +5,7 @@
 import { access } from "node:fs/promises";
 import { join } from "node:path";
 import { DuckDBConnection, DuckDBInstance } from "@duckdb/node-api";
+import { NATIONWIDE } from "../data/regions";
 import type { Country, RawPersona } from "../types";
 import { PERSONA_COLUMNS } from "./pool-schema";
 import type { PersonaFilter, PersonaSource } from "./source";
@@ -51,7 +52,7 @@ export async function openPersonaPool(poolPath: string): Promise<PersonaPool> {
         conds.push("(sex_norm = ? OR sex = ?)");
         params.push(filter.sex, filter.sex);
       }
-      if (filter.region && filter.region !== "Nationwide") {
+      if (filter.region && filter.region !== NATIONWIDE) {
         conds.push("region = ?");
         params.push(filter.region);
       }
