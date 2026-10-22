@@ -1,7 +1,10 @@
 // @wind-tunnel/core — persona reaction pipeline.
-// Public surface grows as modules land; exports stay explicit (no wildcard barrels).
-
-// Analysis (pure math)
+//
+// The engine's public surface: wider than what the CLI consumes, since this
+// is the API a standalone publish of the package would expose. Exports stay
+// explicit (no wildcard barrels) and sorted by module path — Biome's
+// organizeImports keeps that order, which is why there are no section
+// headers here.
 export {
   computeBridging,
   detectConsensus,
@@ -20,8 +23,6 @@ export {
   type SentimentCounts,
   sentimentCounts,
 } from "./analysis/scoring";
-
-// Static data
 export { COUNTRY_CODES, COUNTRY_LABELS, COUNTRY_TO_REGIONS } from "./data/countries";
 export { PERSONA_LANG_CODES, PERSONA_LANGUAGES } from "./data/languages";
 export type { RegionOption } from "./data/regions";
@@ -31,7 +32,6 @@ export {
   SITUATIONS,
   type SituationMeta,
 } from "./data/situations";
-// LM Studio server probe & diagnosis
 export {
   DEFAULT_LMSTUDIO_URL,
   getLmStudioLoadedContext,
@@ -45,7 +45,6 @@ export {
   loadCommand,
   needsLargerContext,
 } from "./lmstudio/doctor";
-// Models
 export { DEFAULT_MODEL_ROLES, type ModelRole, type ModelRoles } from "./models/defaults";
 export { createPipelineModels, type PipelineModels } from "./models/pipeline";
 export {
@@ -56,7 +55,6 @@ export {
   resolveModel,
 } from "./models/registry";
 export { DEFAULT_KEEP_ALIVE, type PipelineStage, STAGE_NUM_CTX } from "./models/stages";
-// Ollama daemon probes & diagnosis
 export {
   DEFAULT_OLLAMA_URL,
   getOllamaVersion,
@@ -73,7 +71,6 @@ export {
   pullCountryPool,
 } from "./personas/ingest";
 export { createJsonPersonaSource, loadJsonPersonaSource } from "./personas/json-source";
-// Personas
 export { extractName } from "./personas/names";
 export {
   defaultPoolPath,
@@ -84,8 +81,6 @@ export {
 } from "./personas/pool";
 export { COUNTRY_PRESETS, type CountryPreset } from "./personas/presets";
 export type { PersonaFilter, PersonaSource } from "./personas/source";
-
-// Pipeline stages
 export { analyzeVerdict, SCORE_BATCH_SIZE, scoreOpinions } from "./pipeline/analyze";
 export { chunk, mapWaves } from "./pipeline/batch";
 export { clusterOpinions } from "./pipeline/cluster";
@@ -93,7 +88,6 @@ export { STANCE_BATCH_SIZE } from "./pipeline/cluster-stages";
 export { type ReactOptions, type ReactSummary, reactPersonas } from "./pipeline/react";
 export { type ScoredOpinion, stratifiedSample } from "./pipeline/sample";
 export { suggestAlternatives } from "./pipeline/suggest";
-// Prompts
 export {
   buildContextBlock,
   buildPersonaSystemPrompt,
@@ -101,7 +95,6 @@ export {
   getSystemExtra,
 } from "./prompts/persona";
 export { getSituationFraming, lengthClause } from "./prompts/situation";
-// Run store & executor
 export { type ExecuteDeps, executeRun } from "./run/execute";
 export { configRoot, dataRoot, isRunId, newRunId, runsRoot } from "./run/paths";
 export { RunStore } from "./run/store";
@@ -117,7 +110,6 @@ export type {
   ScoresArtifact,
   SuggestArtifact,
 } from "./run/types";
-// Schemas & enums
 export {
   CONTEXT_MAX_CHARS,
   countrySchema,
@@ -131,7 +123,6 @@ export {
   situationSchema,
   topicSchema,
 } from "./schemas";
-// Domain types
 export type {
   AlternativeSuggestion,
   AlternativeSuggestions,
@@ -157,8 +148,6 @@ export type {
   Situation,
   Trigger,
 } from "./types";
-
-// Utilities
 export { opinionsToCsv } from "./util/csv";
 export { CuratedError } from "./util/curated-error";
 export { clampPromptInput, escapeForPrompt, quoteUntrusted } from "./util/sanitize";
