@@ -1,7 +1,7 @@
 # Commands & configuration
 
 Status: Implemented
-Last updated: 2026-10-06
+Last updated: 2026-10-22
 
 The README covers the quickstart; this page is the full reference.
 
