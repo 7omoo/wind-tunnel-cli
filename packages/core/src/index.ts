@@ -28,7 +28,7 @@ export {
   COUNTRY_TO_REGIONS,
   resolveRegion,
 } from "./data/countries";
-export { PERSONA_LANG_CODES, PERSONA_LANGUAGES } from "./data/languages";
+export { PERSONA_LANGUAGE_NAMES } from "./data/languages";
 export type { RegionOption } from "./data/regions";
 export {
   DEFAULT_SITUATION,
