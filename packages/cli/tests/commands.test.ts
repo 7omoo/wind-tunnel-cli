@@ -159,6 +159,27 @@ describe("commands (in process, against the Ollama stub)", () => {
     expect(res.stderr).toContain("run not found");
   });
 
+  // Input mistakes are explained in one line; zod's issue list and the
+  // "report an issue" hint are for failures the user cannot fix.
+  it("rejects an empty message with the length rule", async () => {
+    const res = await capture(() =>
+      runCommand("", { personasFile: poolFile, host: stub.url, ...MODELS }),
+    );
+    expect(res.code).toBe(1);
+    expect(res.stderr).toContain("1 to 5000 characters");
+    expect(res.stderr).not.toContain('"code"');
+    expect(res.stderr).not.toContain("WT_DEBUG");
+  });
+
+  it("rejects an unknown country with the valid codes", async () => {
+    const res = await capture(() =>
+      runCommand("x", { personasFile: poolFile, country: "zz", host: stub.url, ...MODELS }),
+    );
+    expect(res.code).toBe(1);
+    expect(res.stderr).toContain('unknown country "zz" — one of: jp, usa');
+    expect(res.stderr).not.toContain("WT_DEBUG");
+  });
+
   it("run stops before any work when the daemon is unreachable", async () => {
     const res = await capture(() =>
       runCommand("x", { personasFile: poolFile, host: "http://127.0.0.1:9", ...MODELS }),

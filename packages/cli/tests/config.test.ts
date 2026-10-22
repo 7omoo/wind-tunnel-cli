@@ -1,5 +1,16 @@
+import { CuratedError } from "@wind-tunnel/core";
 import { describe, expect, it } from "vitest";
 import { resolveConfig } from "../src/config";
+
+// Captures the error a call throws, so its class and message can both be checked.
+function failure(fn: () => unknown): Error {
+  try {
+    fn();
+  } catch (e) {
+    return e as Error;
+  }
+  throw new Error("expected the call to throw");
+}
 
 const TOML = `
 profile = "local"
@@ -89,10 +100,42 @@ describe("resolveConfig", () => {
     expect(resolveConfig({ fileText: `[model]\ngemini_api_key = "k2"\n` }).geminiApiKey).toBe("k2");
   });
 
-  it("rejects invalid values loudly", () => {
-    expect(() => resolveConfig({ flags: { country: "xx" } })).toThrow();
-    expect(() => resolveConfig({ flags: { personas: 5000 } })).toThrow(/1000 or fewer/);
-    expect(() => resolveConfig({ env: { WT_BATCH: "abc" } })).toThrow(/positive integer/);
-    expect(() => resolveConfig({ fileText: `run = "oops"` })).toThrow(/invalid config.toml/);
+  // Every rejection is a CuratedError: the CLI prints it as written, with the
+  // valid options, instead of zod's issue list plus a "report an issue" hint.
+  describe("invalid values", () => {
+    it.each([
+      [{ country: "zz" }, 'unknown country "zz" — one of: jp, usa, in, br, fr, kr, vn, be'],
+      [
+        { situation: "twitter" },
+        'unknown situation "twitter" — one of: anon_board, sns_viral, news_comment, public_comment, real_sns, consumer_survey',
+      ],
+      [{ outputLang: "de" }, 'unknown output language "de" — one of: ja, en'],
+      [{ profile: "cloud" }, 'unknown profile "cloud" — one of: local, hybrid'],
+    ])("names the setting, the value and the valid options for %j", (flags, message) => {
+      const e = failure(() => resolveConfig({ flags }));
+      expect(e).toBeInstanceOf(CuratedError);
+      expect(e.message).toBe(message);
+    });
+
+    it("curates the numeric limits and non-integers", () => {
+      const tooMany = failure(() => resolveConfig({ flags: { personas: 5000 } }));
+      expect(tooMany).toBeInstanceOf(CuratedError);
+      expect(tooMany.message).toMatch(/1000 or fewer/);
+      const notANumber = failure(() => resolveConfig({ env: { WT_BATCH: "abc" } }));
+      expect(notANumber).toBeInstanceOf(CuratedError);
+      expect(notANumber.message).toMatch(/WT_BATCH must be a positive integer/);
+    });
+
+    it("names the config file and the offending key for a bad config.toml", () => {
+      const e = failure(() =>
+        resolveConfig({ fileText: `run = "oops"`, configPath: "/home/me/.config/wt/config.toml" }),
+      );
+      expect(e).toBeInstanceOf(CuratedError);
+      expect(e.message).toMatch(/^invalid \/home\/me\/\.config\/wt\/config\.toml: run: /);
+      // Without a path the file is still named.
+      expect(failure(() => resolveConfig({ fileText: `run = "oops"` })).message).toMatch(
+        /^invalid config\.toml: run: /,
+      );
+    });
   });
 });

@@ -117,7 +117,13 @@ export async function runCommand(message: string, flags: RunFlags): Promise<numb
   const color = useColor(stderr);
   let pool: PersonaPool | undefined;
   try {
-    const topic = topicSchema.parse(message);
+    const parsedTopic = topicSchema.safeParse(message);
+    if (!parsedTopic.success) {
+      throw new CuratedError(
+        `the message must be ${topicSchema.minLength} to ${topicSchema.maxLength} characters — got ${message.length}`,
+      );
+    }
+    const topic = parsedTopic.data;
     const cfg = await loadConfig(flags);
 
     // Persona source: an explicit JSON pool wins; otherwise the local pool
