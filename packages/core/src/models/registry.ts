@@ -16,10 +16,10 @@
 // Unknown providers fail loudly — a CLI should never silently fall back to a
 // different (possibly metered) provider.
 
-import { createGoogleGenerativeAI, type GoogleGenerativeAIProvider } from "@ai-sdk/google";
-import { createOpenAICompatible, type OpenAICompatibleProvider } from "@ai-sdk/openai-compatible";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { type LanguageModel, wrapLanguageModel } from "ai";
-import { createOllama, type OllamaProvider } from "ai-sdk-ollama";
+import { createOllama } from "ai-sdk-ollama";
 import { DEFAULT_LMSTUDIO_URL } from "../lmstudio/client";
 import { reasoningAsJsonTextMiddleware } from "../lmstudio/reasoning-workaround";
 import { retryUnenforcedJsonMiddleware } from "../lmstudio/structured-output-retry";
@@ -59,41 +59,30 @@ export type ProviderSettings = {
   geminiApiKey?: string;
 };
 
-// Provider instances are cached per connection target; model instances are
-// cheap and constructed per call site (they carry per-stage settings).
-const ollamaProviders = new Map<string, OllamaProvider>();
-function ollamaProvider(baseUrl: string): OllamaProvider {
-  let p = ollamaProviders.get(baseUrl);
-  if (!p) {
-    p = createOllama({ baseURL: baseUrl });
-    ollamaProviders.set(baseUrl, p);
-  }
-  return p;
+// Provider instances are cached per connection target (base URL or API key);
+// model instances are cheap and constructed per call site, since they carry
+// per-stage settings.
+function cached<T>(create: (key: string) => T): (key: string) => T {
+  const instances = new Map<string, T>();
+  return (key) => {
+    let instance = instances.get(key);
+    if (!instance) {
+      instance = create(key);
+      instances.set(key, instance);
+    }
+    return instance;
+  };
 }
 
-const lmstudioProviders = new Map<string, OpenAICompatibleProvider>();
-function lmstudioProvider(baseUrl: string): OpenAICompatibleProvider {
-  let p = lmstudioProviders.get(baseUrl);
-  if (!p) {
-    p = createOpenAICompatible({
-      name: "lmstudio",
-      baseURL: `${baseUrl.replace(/\/$/, "")}/v1`,
-      supportsStructuredOutputs: true,
-    });
-    lmstudioProviders.set(baseUrl, p);
-  }
-  return p;
-}
-
-const geminiProviders = new Map<string, GoogleGenerativeAIProvider>();
-function geminiProvider(apiKey: string): GoogleGenerativeAIProvider {
-  let p = geminiProviders.get(apiKey);
-  if (!p) {
-    p = createGoogleGenerativeAI({ apiKey });
-    geminiProviders.set(apiKey, p);
-  }
-  return p;
-}
+const ollamaProvider = cached((baseUrl) => createOllama({ baseURL: baseUrl }));
+const lmstudioProvider = cached((baseUrl) =>
+  createOpenAICompatible({
+    name: "lmstudio",
+    baseURL: `${baseUrl.replace(/\/$/, "")}/v1`,
+    supportsStructuredOutputs: true,
+  }),
+);
+const geminiProvider = cached((apiKey) => createGoogleGenerativeAI({ apiKey }));
 
 export type ResolveModelOptions = {
   // Pipeline stage; selects the num_ctx budget for Ollama models (STAGE_NUM_CTX).
