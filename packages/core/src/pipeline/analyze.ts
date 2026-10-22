@@ -26,7 +26,7 @@ export const SCORE_BATCH_SIZE = 25;
 
 // Representative reactions cited per trigger. The count field carries how many
 // object; the ids are examples, so a handful is enough.
-export const MAX_SAMPLE_OPINION_IDS = 5;
+const MAX_SAMPLE_OPINION_IDS = 5;
 
 // === 1. Per-opinion scores (bulk model, batched) ===
 

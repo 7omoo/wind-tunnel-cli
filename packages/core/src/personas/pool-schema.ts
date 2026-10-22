@@ -4,7 +4,7 @@
 import type { DuckDBConnection } from "@duckdb/node-api";
 import type { RawPersona } from "../types";
 
-export const POOL_DDL = [
+const POOL_DDL = [
   `CREATE TABLE IF NOT EXISTS persona (
     uuid TEXT NOT NULL,
     country TEXT NOT NULL,

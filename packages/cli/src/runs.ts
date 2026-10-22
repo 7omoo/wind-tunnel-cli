@@ -5,7 +5,7 @@ import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { CuratedError, isRunId, type RunInput, RunStore, runsRoot } from "@wind-tunnel/core";
 
-export async function resolveRunDir(idOrPath: string): Promise<string> {
+async function resolveRunDir(idOrPath: string): Promise<string> {
   const candidates = [join(runsRoot(), idOrPath), idOrPath];
   for (const dir of candidates) {
     try {

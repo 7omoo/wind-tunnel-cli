@@ -46,7 +46,7 @@ const fileSchema = z.object({
   ollama: z.object({ host: z.string().optional() }).optional(),
   lmstudio: z.object({ host: z.string().optional() }).optional(),
 });
-export type FileConfig = z.infer<typeof fileSchema>;
+type FileConfig = z.infer<typeof fileSchema>;
 
 // Flags a command may pass in (already typed by commander parsing).
 export type CliFlags = {

@@ -90,11 +90,11 @@ export const TOP_PROPOSITIONS = 5;
 const BRIDGING_MIN_SUPPORT = 0.3;
 
 // Upper bound on the number of opinion groups tried by k-means.
-export const MAX_K = 5;
+const MAX_K = 5;
 
 // Below this best silhouette, any split is treated as fabricated structure
 // (Kaufman & Rousseeuw's "no substantial structure" threshold).
-export const SILHOUETTE_MIN = 0.25;
+const SILHOUETTE_MIN = 0.25;
 
 // Fixed k-means++ seed: the same vote matrix must always yield the same groups,
 // otherwise re-running an identical run can change the number of camps.

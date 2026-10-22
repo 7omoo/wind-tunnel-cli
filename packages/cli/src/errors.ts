@@ -12,7 +12,7 @@ import { paint, useColor } from "./render/format";
 
 const ISSUES_URL = "https://github.com/7omoo/wind-tunnel-cli/issues";
 
-export type ErrorKind =
+type ErrorKind =
   | "connection"
   | "network"
   | "timeout"

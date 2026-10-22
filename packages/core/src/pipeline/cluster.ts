@@ -26,7 +26,7 @@ import {
 // PCA axes kept for the map (PC1/PC2 are the defaults; the rest are selectable).
 const MAX_AXES = 5;
 
-export type ClusterModels = {
+type ClusterModels = {
   propositions: LanguageModel; // analysis role
   stances: LanguageModel; // bulk role
   axisLabels: LanguageModel; // bulk role

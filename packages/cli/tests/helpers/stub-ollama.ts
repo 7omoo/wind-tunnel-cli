@@ -9,7 +9,7 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 
-export type ChatRequest = {
+type ChatRequest = {
   model: string;
   messages: { role: string; content: string }[];
   stream?: boolean;

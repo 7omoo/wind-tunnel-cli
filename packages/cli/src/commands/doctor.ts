@@ -40,7 +40,7 @@ export function doctorTarget(cfg: ResolvedConfig): DoctorTarget {
   };
 }
 
-export function renderDoctorReport(report: OllamaDoctorReport): { text: string; ok: boolean } {
+function renderDoctorReport(report: OllamaDoctorReport): { text: string; ok: boolean } {
   const lines: string[] = [];
   let ok = true;
 

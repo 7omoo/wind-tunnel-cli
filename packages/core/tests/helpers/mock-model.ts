@@ -9,7 +9,7 @@ type CallOptions = { prompt: unknown };
 
 // Flatten a V4 prompt (message array with content parts) into plain text so
 // dynamic mocks can parse ids/counts out of the actual prompt they received.
-export function promptText(options: CallOptions): string {
+function promptText(options: CallOptions): string {
   const parts: string[] = [];
   const prompt = options.prompt as { content?: unknown }[] | undefined;
   for (const message of prompt ?? []) {
