@@ -3,7 +3,7 @@
 
 import { styleText } from "node:util";
 
-type Style = Parameters<typeof styleText>[0];
+export type Style = Parameters<typeof styleText>[0];
 
 export function useColor(stream: NodeJS.WriteStream = process.stdout): boolean {
   if (process.env.NO_COLOR) return false;
@@ -14,6 +14,17 @@ export function paint(style: Style, text: string, enabled: boolean): string {
   // validateStream:false — useColor() already decided; without it styleText
   // re-checks stdout's TTY and silently drops colors under pipes and tests.
   return enabled ? styleText(style, text, { validateStream: false }) : text;
+}
+
+// paint() bound to one color decision, for modules that paint many fragments.
+export function painter(enabled: boolean): (style: Style, text: string) => string {
+  return (style, text) => paint(style, text, enabled);
+}
+
+// Usable columns for a block of output: the terminal's width (78 when unknown)
+// less a margin, never below 56 so cards stay legible.
+export function contentWidth(stream: NodeJS.WriteStream): number {
+  return Math.max(56, (stream.columns ?? 78) - 2);
 }
 
 export function formatDuration(ms: number): string {
@@ -43,7 +54,7 @@ export function gauge(
   value: number,
   max: number,
   width: number,
-  style: Parameters<typeof styleText>[0],
+  style: Style,
   enabled: boolean,
 ): string {
   const filled = filledCells(value, max, width);
@@ -52,7 +63,7 @@ export function gauge(
   );
 }
 
-export type BarSegment = { count: number; style: Parameters<typeof styleText>[0] };
+export type BarSegment = { count: number; style: Style };
 
 // Proportional multi-segment bar (largest-remainder rounding so segments sum
 // exactly to `width`; any non-zero segment keeps at least one visible cell,
