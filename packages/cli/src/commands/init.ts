@@ -1,7 +1,7 @@
 // `wt-cli init` — interactive first-run: write config.toml with explicit
 // values (so model-name defaults are pinned in the user's file, not in code).
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { createInterface } from "node:readline/promises";
 import {
@@ -28,13 +28,10 @@ export async function initCommand(): Promise<number> {
 
   try {
     const path = configFilePath();
-    let exists = false;
-    try {
-      await readFile(path, "utf8");
-      exists = true;
-    } catch {
-      // no existing config
-    }
+    const exists = await access(path).then(
+      () => true,
+      () => false,
+    );
     if (exists) {
       const overwrite = await ask(`${path} exists — overwrite? [y/N]`, "N");
       if (!/^y(es)?$/i.test(overwrite)) {
@@ -66,10 +63,11 @@ export async function initCommand(): Promise<number> {
 
     // Validate through the same schema the loader uses — a config written by
     // init must always load.
-    resolveConfig({ fileText: stringifyToml(config) });
+    const text = stringifyToml(config);
+    resolveConfig({ fileText: text });
 
     await mkdir(dirname(path), { recursive: true });
-    await writeFile(path, `${stringifyToml(config)}\n`, "utf8");
+    await writeFile(path, `${text}\n`, "utf8");
     process.stderr.write(`${paint("green", "✓", color)} wrote ${path}\n`);
     return 0;
   } catch (e) {

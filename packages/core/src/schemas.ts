@@ -56,18 +56,18 @@ export type PersonaLang = z.infer<typeof personaLangSchema>;
 // country -> default reaction language (the country's official language).
 // Multilingual countries (in/be) use English because their datasets ship an
 // English split. Custom pools override this via their dataset definition.
+const DEFAULT_PERSONA_LANG: Record<Country, PersonaLang> = {
+  jp: "ja",
+  usa: "en",
+  in: "en",
+  br: "pt",
+  fr: "fr",
+  kr: "ko",
+  vn: "vi",
+  be: "en",
+};
 export function defaultPersonaLang(country: Country): PersonaLang {
-  const map: Record<Country, PersonaLang> = {
-    jp: "ja",
-    usa: "en",
-    in: "en",
-    br: "pt",
-    fr: "fr",
-    kr: "ko",
-    vn: "vi",
-    be: "en",
-  };
-  return map[country] ?? "en";
+  return DEFAULT_PERSONA_LANG[country];
 }
 
 // country -> default analysis output language: the pool's own language when

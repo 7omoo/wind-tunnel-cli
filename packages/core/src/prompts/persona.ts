@@ -7,10 +7,11 @@
 // prompts/cluster, prompts/suggest) use the output language instead.
 
 import { PERSONA_LANGUAGE_NAMES } from "../data/languages";
+import { DEFAULT_SITUATION } from "../data/situations";
 import type { PersonaLang, Situation } from "../types";
 import { quoteUntrusted } from "../util/sanitize";
 import { postContentBlock } from "./post";
-import { DEFAULT_SITUATION, lengthClause } from "./situation";
+import { lengthClause } from "./situation";
 
 export function getSystemExtra(personaLang: PersonaLang): string {
   // Forcing every persona to "be critical" makes all of them nitpick even a

@@ -13,10 +13,8 @@
 //     CHANNEL_CULTURE injects a short venue example + one line of temperament.
 //     Unregistered country x channel cells fall back to the generic prose.
 
-import { DEFAULT_SITUATION, type LengthPolicy, SITUATIONS } from "../data/situations";
+import { type LengthPolicy, SITUATIONS } from "../data/situations";
 import type { Country, PersonaLang, Situation } from "../types";
-
-export { DEFAULT_SITUATION };
 
 // Render the situation's length-policy token into a concrete phrase.
 // Anonymous boards allow rants; surveys cap at two sentences.

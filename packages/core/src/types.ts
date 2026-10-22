@@ -3,21 +3,16 @@
 // results (ids assigned, references clamped, scores composed in code), so they
 // are written out here; each stage maps its generation schema's output into
 // these types, and the compiler checks that mapping.
-import type {
-  Country as _Country,
-  OutputLang as _OutputLang,
-  PersonaLang as _PersonaLang,
-  RiskLevel as _RiskLevel,
-  Severity as _Severity,
-  Situation as _Situation,
+export type {
+  Country,
+  OutputLang,
+  PersonaLang,
+  RiskLevel,
+  Severity,
+  Situation,
 } from "./schemas";
 
-export type Country = _Country;
-export type OutputLang = _OutputLang;
-export type PersonaLang = _PersonaLang;
-export type Situation = _Situation;
-export type RiskLevel = _RiskLevel;
-export type Severity = _Severity;
+import type { RiskLevel, Severity } from "./schemas";
 
 // One persona's reaction to the message.
 export type Opinion = {

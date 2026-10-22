@@ -102,12 +102,8 @@ export function createProgressRenderer(
     if (stage === null) return;
     const duration = formatDuration(Date.now() - stageStart);
     const line = `${paint("green", "✓", color)} ${STAGE_LABELS[stage]} ${paint("dim", duration, color)}\n`;
-    if (tty) {
-      erase();
-      stream.write(line);
-    } else {
-      stream.write(line);
-    }
+    erase(); // no-op outside a TTY
+    stream.write(line);
     stage = null;
     voices = [];
     bar = null;

@@ -78,14 +78,14 @@ export async function clusterOpinions(
   // map can put any two of them on x/y (PC1/PC2 stay the defaults).
   const pca = new PCA(voteMatrix);
   const projected = pca.predict(voteMatrix).to2DArray();
-  const AXIS_COUNT = Math.min(MAX_AXES, projected[0]?.length ?? 2);
+  const axisCount = Math.min(MAX_AXES, projected[0]?.length ?? 2);
   const plotData = opinions.map((o, i) => {
     const row = projected[i] ?? [];
     return {
       personaId: o.personaId,
       x: row[0] ?? 0,
       y: row[1] ?? 0,
-      coords: row.slice(0, AXIS_COUNT),
+      coords: row.slice(0, axisCount),
     };
   });
 
@@ -95,7 +95,7 @@ export async function clusterOpinions(
   const axisLabelsPromise = labelAxes({
     propositions,
     loadings,
-    k: AXIS_COUNT,
+    k: axisCount,
     outputLang: opts.outputLang,
     model: opts.models.axisLabels,
   });
