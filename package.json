@@ -14,12 +14,15 @@
     "test:watch": "vitest",
     "lint": "biome lint",
     "format": "biome format --write",
-    "check": "biome check --write"
+    "check": "biome check --write",
+    "knip": "knip",
+    "notices": "node scripts/generate-third-party-notices.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",
     "@types/node": "^22",
     "@vitest/coverage-v8": "^4.1.10",
+    "knip": "^6.42.1",
     "typescript": "^5",
     "vitest": "^4.1.0"
   },
