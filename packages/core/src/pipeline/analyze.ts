@@ -9,7 +9,8 @@
 //
 // All JSON comes back through constrained decoding (Output.object -> Ollama
 // `format`), so the generation schemas here are strict — no .catch/.default.
-// One deliberate exception: the trigger sample-id cap (see verdictGenSchema).
+// The one soft constraint is the trigger sample-id cap, carried as schema
+// metadata and trimmed in code (see verdictGenSchema).
 
 import { generateText, type LanguageModel, Output } from "ai";
 import { z } from "zod";

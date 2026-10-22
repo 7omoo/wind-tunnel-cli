@@ -1,7 +1,9 @@
-// Cluster stage orchestration: propositions -> vote matrix -> PCA -> k-means
-// -> consensus / division / bridging / minority / group profiles.
-// Numeric analysis is local math; the model is only asked for semantics
-// (propositions, stances, labels, profiles).
+// Cluster stage orchestration. Phases, in order:
+//   1 propositions (model, on the sample)        2 vote matrix (model, every opinion)
+//   3 PCA projection                              4 axis labels (model; alongside 5-9)
+//   5 k-means groups (k by silhouette)            6-8 consensus / division / bridging
+//   9 group profiles + minority report (model)
+// Numeric analysis is local math; the model is only asked for semantics.
 
 import type { LanguageModel } from "ai";
 import { PCA } from "ml-pca";
@@ -115,7 +117,7 @@ export async function clusterOpinions(
   const divisive = clusters.length >= 2 ? detectDivision(voteMatrix, labels, propositions) : [];
   const bridging = clusters.length >= 2 ? computeBridging(voteMatrix, labels, propositions) : [];
 
-  // Phases 4 + 9/10 in parallel.
+  // Phases 4 and 9 in parallel.
   const [axisLabels, profilesAndMinority] = await Promise.all([
     axisLabelsPromise,
     generateGroupProfilesAndMinority({

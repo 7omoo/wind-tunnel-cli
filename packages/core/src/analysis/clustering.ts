@@ -23,12 +23,12 @@ export function silhouette(data: number[][], labels: number[]): number {
   const uniqueLabels = [...new Set(labels)];
   if (uniqueLabels.length <= 1) return 0;
 
+  // Rows share one length (the proposition count) and i < n indexes an
+  // existing row, so the `?? 0` / `?? []` fallbacks below only satisfy
+  // noUncheckedIndexedAccess; they are unreachable.
   function dist(a: number[], b: number[]): number {
     let sum = 0;
     for (let i = 0; i < a.length; i++) {
-      // Vote-matrix rows all share one length (= proposition count), so the
-      // index is populated on both sides; the type system can't guarantee it,
-      // so missing entries fall back to 0 (unreachable under the invariant).
       const av = a[i] ?? 0;
       const bv = b[i] ?? 0;
       sum += (av - bv) ** 2;
@@ -39,7 +39,6 @@ export function silhouette(data: number[][], labels: number[]): number {
   let totalS = 0;
   for (let i = 0; i < n; i++) {
     const myLabel = labels[i];
-    // i < n = data.length, so the row exists; fall back to [] for the type system.
     const rowI = data[i] ?? [];
 
     // a(i) = average distance to same cluster
@@ -200,10 +199,8 @@ const CONSENSUS_MIN_SUPPORT = 0.6;
  * detectConsensus only ranks — by the product of the supports, with no
  * threshold — so a proposition the groups split on (support 0.97 / 0.09 / 0.96
  * / 0.40 / 0.10) could still top the list and be reported as consensus.
- * Same definition as the hosted app, which fixed the same symptom on
- * 2026-09-29 and filters both its stored output and its screen with it; the
- * CLI copy predated that fix. Callers reading saved runs filter with it too,
- * since runs written before this check still carry unfiltered rows.
+ * Callers reading saved runs filter with it too: runs written before this
+ * check still carry unfiltered rows.
  */
 export function isConsensus(c: Pick<OpinionClusterConsensus, "groupSupport">): boolean {
   return c.groupSupport.length > 0 && c.groupSupport.every((p) => p >= CONSENSUS_MIN_SUPPORT);

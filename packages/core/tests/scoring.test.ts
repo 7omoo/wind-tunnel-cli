@@ -15,8 +15,8 @@ describe("classifySentiment", () => {
   });
 
   it("includes the boundary on the favorable/critical side (<=, >=), not neutral", () => {
-    // Deliberate asymmetry carried over from the original implementation:
-    // exactly +/-20 belongs to favorable/critical, not neutral.
+    // Exactly +/-20 belongs to favorable/critical, not neutral: reaching the
+    // threshold counts as taking a side.
     expect(classifySentiment(SENTIMENT_THRESHOLD)).toBe("favorable"); // +20
     expect(classifySentiment(-SENTIMENT_THRESHOLD)).toBe("critical"); // -20
     expect(classifySentiment(19)).toBe("neutral");

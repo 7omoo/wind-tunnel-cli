@@ -163,11 +163,6 @@ export function clip(text: string, maxWidth: number): string {
   return `${out}…`;
 }
 
-// Wrap to a display width with a hanging indent for continuation lines.
-// Prefers breaking at spaces so Latin words stay whole — but only when the
-// kept part fills at least 60% of the line; otherwise it breaks at the width
-// limit instead (mixed lines like "1. <long CJK prose>" would otherwise leave
-// a nearly empty "1." line, since CJK has no other spaces to break at).
 // Characters that must not start a line (Japanese line-breaking rules,
 // 行頭禁則). When a wrap would land one of these at a line start, it hangs at
 // the end of the previous line instead (at most a couple of columns over).
@@ -189,6 +184,11 @@ export function wrapLines(
   return kept;
 }
 
+// Wrap to a display width with a hanging indent for continuation lines.
+// Prefers breaking at spaces so Latin words stay whole — but only when the
+// kept part fills at least 60% of the line; otherwise it breaks at the width
+// limit instead (mixed lines like "1. <long CJK prose>" would otherwise leave
+// a nearly empty "1." line, since CJK has no other spaces to break at).
 export function wrap(text: string, maxWidth: number, indent = ""): string[] {
   const oneLine = text.replace(/\s+/g, " ").trim();
   if (!oneLine) return [];

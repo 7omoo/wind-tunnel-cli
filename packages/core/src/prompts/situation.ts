@@ -1,6 +1,6 @@
 // Situation framing (channel context). Layered onto the persona system prompt to
 // change the heat and register of the voice depending on *where* the persona is
-// speaking. Design rules, carried over from production tuning:
+// speaking. Design rules, learned from tuning the hosted app:
 //
 //   - Never order the persona to be hostile. Anonymous-board etc. unlock candor
 //     through context role-play, not through a "be toxic" instruction.

@@ -5,8 +5,8 @@
 // deliberately NOT here — the CLI maps Sentiment to ANSI on its own.
 
 // Scores at or above this value are favorable; at or below the negative, critical.
-// The boundary (exactly +/-20) belongs to the favorable/critical side (<=, >=),
-// an asymmetry carried over from the original implementation on purpose.
+// The boundary (exactly +/-20) belongs to the favorable/critical side (<=, >=):
+// a score that reaches the threshold has taken a side.
 export const SENTIMENT_THRESHOLD = 20;
 
 export type Sentiment = "critical" | "neutral" | "favorable";
