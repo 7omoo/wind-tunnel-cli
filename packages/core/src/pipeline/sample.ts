@@ -6,6 +6,7 @@
 // char budget the "sample" is simply everything, reproducing small-N behavior.
 
 import type { Opinion } from "../types";
+import { shuffle } from "../util/shuffle";
 
 export type ScoredOpinion = { opinion: Opinion; score: number };
 
@@ -44,7 +45,7 @@ export function stratifiedSample(
     const critical = sorted.slice(0, nCritical);
     const favorable = nFavorable > 0 ? sorted.slice(-nFavorable) : [];
     const middle = sorted.slice(nCritical, sorted.length - favorable.length);
-    const neutral = shuffleWith(middle, random).slice(0, nNeutral);
+    const neutral = shuffle(middle, random).slice(0, nNeutral);
 
     picked = [...critical, ...neutral, ...favorable].sort((a, b) => a.score - b.score);
   }
@@ -58,15 +59,4 @@ export function stratifiedSample(
     chars -= dropped ? dropped.opinion.text.length : 0;
   }
   return picked;
-}
-
-function shuffleWith<T>(arr: T[], random: () => number): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(random() * (i + 1));
-    const ai = a[i] as T;
-    a[i] = a[j] as T;
-    a[j] = ai;
-  }
-  return a;
 }

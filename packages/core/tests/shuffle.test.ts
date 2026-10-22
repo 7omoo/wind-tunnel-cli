@@ -20,4 +20,9 @@ describe("shuffle", () => {
     const input = Array.from({ length: 20 }, (_, i) => i);
     expect(shuffle(input)).not.toEqual(input);
   });
+
+  // Fisher–Yates with a constant 0 always swaps the current slot with slot 0.
+  it("takes an injectable RNG so callers can be deterministic", () => {
+    expect(shuffle([1, 2, 3, 4], () => 0)).toEqual([2, 3, 4, 1]);
+  });
 });
