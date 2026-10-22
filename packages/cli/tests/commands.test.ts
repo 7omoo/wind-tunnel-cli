@@ -6,12 +6,13 @@
 import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { CuratedError } from "@wind-tunnel/core";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { detailCommand } from "../src/commands/detail";
 import { runDoctor } from "../src/commands/doctor";
 import { personasListCommand } from "../src/commands/personas";
 import { resumeCommand } from "../src/commands/resume";
-import { preflightModels, runCommand } from "../src/commands/run";
+import { preflightModels, regionFilter, runCommand } from "../src/commands/run";
 import { type StubOllama, startStubOllama } from "./helpers/stub-ollama";
 
 const POOL = Array.from({ length: 6 }, (_, i) => ({
@@ -173,6 +174,15 @@ describe("commands (in process, against the Ollama stub)", () => {
     expect(res.stderr).not.toContain("WT_DEBUG");
   });
 
+  it("rejects an unknown region before looking for a pool", async () => {
+    const res = await capture(() =>
+      runCommand("x", { country: "usa", region: "Mars", host: stub.url, ...MODELS }),
+    );
+    expect(res.code).toBe(1);
+    expect(res.stderr).toContain('unknown region "Mars" for usa — one of: Nationwide, AL, AK');
+    expect(res.stderr).not.toContain("WT_DEBUG");
+  });
+
   it("rejects an unknown country with the valid codes", async () => {
     const res = await capture(() =>
       runCommand("x", { personasFile: poolFile, country: "zz", host: stub.url, ...MODELS }),
@@ -194,6 +204,26 @@ describe("commands (in process, against the Ollama stub)", () => {
   it("personas list explains how to get a pool when none is installed", async () => {
     const res = await capture(() => personasListCommand());
     expect(res.stderr + res.stdout).toContain("wt-cli personas pull");
+  });
+});
+
+describe("regionFilter", () => {
+  it("passes a pulled pool's value through and maps a label to it", () => {
+    expect(regionFilter({ region: "TX" }, "usa")).toBe("TX");
+    expect(regionFilter({ region: "Texas" }, "usa")).toBe("TX");
+    expect(regionFilter({ region: "関東" }, "jp")).toBe("関東地方");
+    expect(regionFilter({}, "usa")).toBeUndefined();
+  });
+
+  it("rejects an unknown region with the country's options", () => {
+    expect(() => regionFilter({ region: "Mars" }, "usa")).toThrow(CuratedError);
+    expect(() => regionFilter({ region: "Mars" }, "jp")).toThrow(
+      'unknown region "Mars" for jp — one of: Nationwide, 北海道地方, 東北地方',
+    );
+  });
+
+  it("leaves custom pools alone: their rows may carry any region", () => {
+    expect(regionFilter({ region: "Mars", personasFile: "pool.json" }, "usa")).toBe("Mars");
   });
 });
 
