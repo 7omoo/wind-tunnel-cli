@@ -39,14 +39,14 @@ export function parseModelSpec(spec: string): ParsedModelSpec {
   const name = i === -1 ? "" : spec.slice(i + 1);
   if (!provider || !name) {
     throw new CuratedError(
-      `Invalid model spec "${spec}" — expected "provider:model", e.g. "ollama:qwen3:8b"`,
+      `invalid model spec "${spec}" — expected "provider:model", e.g. "ollama:qwen3:8b"`,
     );
   }
   if (provider === "ollama") return { provider: "ollama", name };
   if (provider === "lmstudio") return { provider: "lmstudio", name };
   if (provider === "gemini" || provider === "google") return { provider: "gemini", name };
-  throw new Error(
-    `Unknown model provider "${provider}" in "${spec}" (supported: ollama, lmstudio, gemini)`,
+  throw new CuratedError(
+    `unknown model provider "${provider}" in "${spec}" — one of: ollama, lmstudio, gemini`,
   );
 }
 
@@ -131,8 +131,8 @@ export function resolveModel(
   // gemini
   const apiKey = settings.geminiApiKey;
   if (!apiKey) {
-    throw new Error(
-      `Model "${spec}" needs a Gemini API key (set GEMINI_API_KEY or [model] gemini_api_key in config)`,
+    throw new CuratedError(
+      `model "${spec}" needs a Gemini API key — set GEMINI_API_KEY or [model] gemini_api_key in config.toml`,
     );
   }
   return geminiProvider(apiKey)(parsed.name);

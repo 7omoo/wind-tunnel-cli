@@ -151,12 +151,14 @@ describe("commands (in process, against the Ollama stub)", () => {
     const res = await capture(() => detailCommand(runId, { group: 99 }));
     expect(res.code).toBe(1);
     expect(res.stderr).toMatch(/--group must be 1\.\.\d/);
+    expect(res.stderr).not.toContain("WT_DEBUG");
   });
 
   it("resume reports an unknown run id", async () => {
     const res = await capture(() => resumeCommand("no-such-run", { host: stub.url }));
     expect(res.code).toBe(1);
     expect(res.stderr).toContain("run not found");
+    expect(res.stderr).not.toContain("WT_DEBUG");
   });
 
   // Input mistakes are explained in one line; zod's issue list and the

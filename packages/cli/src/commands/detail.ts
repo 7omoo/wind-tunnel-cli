@@ -3,7 +3,7 @@
 // most-critical first. Defaults to the latest run; `--group N` narrows to one
 // group. Plain stdout, so `wt-cli detail | less` pages naturally.
 
-import { classifySentiment, isConsensus } from "@wind-tunnel/core";
+import { CuratedError, classifySentiment, isConsensus } from "@wind-tunnel/core";
 import { renderError } from "../errors";
 import { clip, displayWidth, paint, useColor, wrap } from "../render/format";
 import { groupStyle, personaMeta, SENTIMENT_STYLE } from "../render/theme";
@@ -55,7 +55,7 @@ export async function detailCommand(
     });
 
     if (opts.group !== undefined && (opts.group < 1 || opts.group > groups.length)) {
-      throw new Error(`--group must be 1..${groups.length}`);
+      throw new CuratedError(`--group must be 1..${groups.length}`);
     }
     const filter = opts.group !== undefined ? groups[opts.group - 1] : undefined;
 

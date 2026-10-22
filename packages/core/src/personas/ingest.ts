@@ -16,6 +16,7 @@ import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import { DuckDBConnection, DuckDBInstance } from "@duckdb/node-api";
 import type { Country } from "../types";
+import { CuratedError } from "../util/curated-error";
 import { ensurePoolSchema, PERSONA_COLUMNS } from "./pool-schema";
 import { COUNTRY_PRESETS, presetGlob, SEX_NORM_SQL } from "./presets";
 
@@ -42,7 +43,7 @@ export async function pullCountryPool(opts: {
   const preset = COUNTRY_PRESETS[opts.country];
   const cap = opts.cap ?? preset.defaultCap;
   if (!Number.isInteger(cap) || cap < 1 || cap > 100000) {
-    throw new Error(`invalid cap: ${opts.cap}`);
+    throw new CuratedError(`invalid cap ${cap} — must be an integer from 1 to 100000`);
   }
   const emit = opts.onProgress ?? (() => {});
 

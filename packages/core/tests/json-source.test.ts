@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { loadJsonPersonaSource } from "../src/personas/json-source";
+import { CuratedError } from "../src/util/curated-error";
 import { FIXTURE_PERSONAS_JP } from "./fixtures/personas-jp";
 
 let dir: string;
@@ -34,8 +35,11 @@ describe("loadJsonPersonaSource", () => {
     expect(await wrapped.poolVersion("jp")).toBe("v7");
   });
 
-  it("refuses an empty pool with the file path in the message", async () => {
+  it("refuses an empty pool, naming the file and the accepted shapes", async () => {
     const p = await write("empty.json", { personas: [] });
-    await expect(loadJsonPersonaSource(p)).rejects.toThrow(p);
+    const e = await loadJsonPersonaSource(p).catch((x: unknown) => x);
+    expect(e).toBeInstanceOf(CuratedError);
+    expect((e as Error).message).toContain(p);
+    expect((e as Error).message).toContain('{ "personas": [...] }');
   });
 });

@@ -1,8 +1,9 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { CuratedError } from "@wind-tunnel/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { latestRunDir } from "../src/runs";
+import { latestRunDir, openRun } from "../src/runs";
 
 let home: string;
 let runs: string;
@@ -36,5 +37,14 @@ describe("latestRunDir", () => {
   it("explains how to start when there are no runs", async () => {
     await writeFile(join(runs, "notes.txt"), "x");
     await expect(latestRunDir()).rejects.toThrow("no runs yet");
+  });
+});
+
+describe("openRun", () => {
+  it("names the id and the runs root for an id that does not exist", async () => {
+    const e = await openRun("20990101-000000-zzzz").catch((x: unknown) => x);
+    expect(e).toBeInstanceOf(CuratedError);
+    expect((e as Error).message).toContain("20990101-000000-zzzz");
+    expect((e as Error).message).toContain(runs);
   });
 });
