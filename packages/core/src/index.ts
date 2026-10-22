@@ -90,7 +90,12 @@ export { chunk, mapWaves } from "./pipeline/batch";
 export { clusterOpinions } from "./pipeline/cluster";
 export { STANCE_BATCH_SIZE } from "./pipeline/cluster-stages";
 export { type ReactOptions, type ReactSummary, reactPersonas } from "./pipeline/react";
-export { type ScoredOpinion, stratifiedSample } from "./pipeline/sample";
+export {
+  ANALYSIS_SAMPLE,
+  type ScoredOpinion,
+  sampleForAnalysis,
+  stratifiedSample,
+} from "./pipeline/sample";
 export { suggestAlternatives } from "./pipeline/suggest";
 export {
   buildContextBlock,

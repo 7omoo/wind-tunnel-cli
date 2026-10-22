@@ -20,7 +20,7 @@ import { riskLevelSchema, severitySchema } from "../schemas";
 import type { FlameResult, Opinion, OpinionScore, OutputLang, Trigger } from "../types";
 import { clampPromptInput } from "../util/sanitize";
 import { batchFailureWarnings, chunk, mapWaves } from "./batch";
-import { type ScoredOpinion, stratifiedSample } from "./sample";
+import { sampleForAnalysis } from "./sample";
 
 export const SCORE_BATCH_SIZE = 25;
 
@@ -154,7 +154,7 @@ export type VerdictOptions = {
   scores: OpinionScore[];
   outputLang: OutputLang;
   model: LanguageModel;
-  // Sample budgets; defaults reproduce "everything" for typical N (docs/DESIGN.md §4).
+  // Sample budget overrides (default: ANALYSIS_SAMPLE).
   sampleMaxCount?: number;
   sampleMaxChars?: number;
   random?: () => number;
@@ -163,14 +163,9 @@ export type VerdictOptions = {
 export async function analyzeVerdict(opts: VerdictOptions): Promise<FlameResult> {
   const topic = clampPromptInput(opts.topic);
 
-  const scoreById = new Map(opts.scores.map((s) => [s.personaId, s.score]));
-  const scored: ScoredOpinion[] = opts.opinions.map((o) => ({
-    opinion: o,
-    score: scoreById.get(o.personaId) ?? 0,
-  }));
-  const sample = stratifiedSample(scored, {
-    maxCount: opts.sampleMaxCount ?? 150,
-    maxChars: opts.sampleMaxChars ?? 60000,
+  const sample = sampleForAnalysis(opts.opinions, opts.scores, {
+    maxCount: opts.sampleMaxCount,
+    maxChars: opts.sampleMaxChars,
     random: opts.random,
   });
 

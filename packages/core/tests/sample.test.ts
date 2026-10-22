@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type ScoredOpinion, stratifiedSample } from "../src/pipeline/sample";
+import { type ScoredOpinion, sampleForAnalysis, stratifiedSample } from "../src/pipeline/sample";
 import type { Opinion } from "../src/types";
 
 function scored(id: string, score: number, text = `opinion ${id}`): ScoredOpinion {
@@ -79,5 +79,20 @@ describe("stratifiedSample", () => {
       expect(ids.length).toBeLessThanOrEqual(maxCount);
       expect(new Set(ids).size).toBe(ids.length);
     }
+  });
+});
+
+describe("sampleForAnalysis", () => {
+  it("joins scores by persona id, scoring unscored opinions 0, sorted ascending", () => {
+    const opinions = ["a", "b", "c"].map((id) => scored(id, 0).opinion);
+    const out = sampleForAnalysis(opinions, [
+      { personaId: "a", score: -40 },
+      { personaId: "c", score: 30 },
+    ]);
+    expect(out.map((s) => [s.opinion.personaId, s.score])).toEqual([
+      ["a", -40],
+      ["b", 0],
+      ["c", 30],
+    ]);
   });
 });

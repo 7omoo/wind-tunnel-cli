@@ -5,14 +5,13 @@
 // the sample doesn't caricature the crowd. At N <= maxCount and within the
 // char budget the "sample" is simply everything, reproducing small-N behavior.
 
-import type { Opinion } from "../types";
+import type { Opinion, OpinionScore } from "../types";
 import { shuffle } from "../util/shuffle";
 
 export type ScoredOpinion = { opinion: Opinion; score: number };
 
 export type StratifiedSampleOptions = {
-  // Hard cap on sampled items. Default matches docs/DESIGN.md §4 (~150 = "all"
-  // for typical runs).
+  // Hard cap on sampled items.
   maxCount: number;
   // Char budget across sampled opinion texts, protecting the num_ctx budget of
   // the stage that embeds them.
@@ -20,6 +19,27 @@ export type StratifiedSampleOptions = {
   // Injectable RNG for deterministic tests.
   random?: () => number;
 };
+
+// Budget of the whole-corpus analysis calls (verdict, propositions): ~150
+// reactions is "all" for typical runs and fits the stage's context window
+// (docs/DESIGN.md §4).
+export const ANALYSIS_SAMPLE = { maxCount: 150, maxChars: 60000 };
+
+// Joins opinions with their scores (unscored -> 0) and draws the analysis
+// sample within ANALYSIS_SAMPLE, unless overridden.
+export function sampleForAnalysis(
+  opinions: Opinion[],
+  scores: Pick<OpinionScore, "personaId" | "score">[],
+  opts: Partial<StratifiedSampleOptions> = {},
+): ScoredOpinion[] {
+  const scoreById = new Map(scores.map((s) => [s.personaId, s.score]));
+  const scored = opinions.map((o) => ({ opinion: o, score: scoreById.get(o.personaId) ?? 0 }));
+  return stratifiedSample(scored, {
+    maxCount: opts.maxCount ?? ANALYSIS_SAMPLE.maxCount,
+    maxChars: opts.maxChars ?? ANALYSIS_SAMPLE.maxChars,
+    random: opts.random,
+  });
+}
 
 // Returns items sorted by score ascending (most critical first).
 export function stratifiedSample(
